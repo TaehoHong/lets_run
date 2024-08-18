@@ -1,10 +1,20 @@
 plugins {
-    kotlin("jvm") version "2.0.0"
-    kotlin("plugin.spring") version "2.0.0"
+
+    val kotlinVersion = "2.0.0"
+
+    kotlin("jvm") version kotlinVersion
+    kotlin("plugin.spring") version kotlinVersion
     id("org.springframework.boot") version "3.3.2"
     id("io.spring.dependency-management") version "1.1.6"
-    kotlin("plugin.jpa") version "2.0.0"
+    kotlin("plugin.jpa") version kotlinVersion
+    kotlin("plugin.allopen") version kotlinVersion
 }
+
+
+noArg {
+    annotation("jakarta.persistence.Enetity")
+}
+
 
 group = "com.example"
 version = "0.0.1"
