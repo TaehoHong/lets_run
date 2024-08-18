@@ -11,6 +11,5 @@ spring:
 
 logging:
   level:
-    root : DEBUG
-#  org.springframework:
-#    security: DEBUG
+    org.springframework:
+      web: DEBUG

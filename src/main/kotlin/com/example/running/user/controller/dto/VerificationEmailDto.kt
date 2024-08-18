@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull
 
 class VerificationEmailDto (
 
-    @NotNull
-    @Email
+    @field:NotNull
+    @field:Email
     val email: String
 )

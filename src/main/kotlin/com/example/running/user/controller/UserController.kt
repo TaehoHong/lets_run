@@ -1,5 +1,6 @@
 package com.example.running.user.controller
 
+import com.example.running.user.controller.dto.UserCreationDto
 import com.example.running.user.controller.dto.VerificationEmailDto
 import com.example.running.user.service.UserAccountService
 import jakarta.validation.Valid
@@ -18,5 +19,10 @@ class UserController(
     fun verifyEmailIsNotDuplicate(@Valid @RequestBody emailDto: VerificationEmailDto) {
 
         userAccountService.verifyEmailIsNotExists(emailDto.email)
+    }
+
+    @PostMapping
+    fun createUser(@Valid @RequestBody userCreationDto: UserCreationDto) {
+        userAccountService.verifyEmailIsNotExists(userCreationDto.email)
     }
 }
