@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  running-db:
+    image: mariadb:latest
+
+    environment:
+      MARIADB_DATABASE: running
+      MARIADB_USERNAME: local
+      MARIADB_PASSWORD: local
+      MARIADB_ROOT_PASSWORD: root
+
+    restart: always
+
+    ports:
+      - "3395:3306"
