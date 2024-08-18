@@ -7,3 +7,10 @@ spring:
     url: jdbc:mariadb://localhost:3395/running
     username: local
     password: local
+
+
+logging:
+  level:
+    root : DEBUG
+#  org.springframework:
+#    security: DEBUG

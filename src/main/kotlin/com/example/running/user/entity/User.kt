@@ -15,6 +15,9 @@ class User(
     @Column(name = "nickname", nullable = false, columnDefinition = "VARCHAR(128)")
     val nickname: String,
 
+    @Column(name = "phone_number", nullable = false, columnDefinition = "CHAR(11)")
+    val phoneNumber: String,
+
     @ColumnDefault("1")
     @Column(name = "is_enabled", nullable = false, columnDefinition = "TINYINT(1)")
     val isEnabled: Boolean = true,

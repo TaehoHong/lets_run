@@ -1,11 +1,10 @@
 package com.example.running.security
 
-import org.springframework.cglib.core.Customizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.annotation.web.configurers.CorsConfigurer
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -23,6 +22,7 @@ class SecurityConfig() {
             .csrf { it.disable() }
             .authorizeHttpRequests { authorizeHttpRequests ->
                 authorizeHttpRequests.requestMatchers("/api/v1/users").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/verification/email").permitAll()
                 authorizeHttpRequests.anyRequest().denyAll()
             }.build()
     }
