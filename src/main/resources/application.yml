@@ -13,3 +13,9 @@ logging:
   level:
     org.springframework:
       web: DEBUG
+
+
+
+oauth:
+  google:
+    token_url: "https://oauth2.googleapis.com/token"
