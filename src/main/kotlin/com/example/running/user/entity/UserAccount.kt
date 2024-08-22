@@ -42,4 +42,11 @@ class UserAccount(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     val id: Long = 0
+
+    constructor(userId: Long, accountTypeId: Short, email: String, password: String): this(
+        user = User(id = userId),
+        accountType = AccountType(id = accountTypeId),
+        email = email,
+        password = password
+    )
 }

@@ -1,8 +1,11 @@
 package com.example.running.user.controller
 
-import com.example.running.user.controller.dto.UserCreationDto
+import com.example.running.user.controller.dto.UserCreationRequest
+import com.example.running.user.controller.dto.UserResponse
 import com.example.running.user.controller.dto.VerificationEmailDto
 import com.example.running.user.service.UserAccountService
+import com.example.running.user.service.UserService
+import com.example.running.user.service.dto.UserCreationDto
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -12,7 +15,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/users")
 class UserController(
-    val userAccountService: UserAccountService
+    val userAccountService: UserAccountService,
+    val userService: UserService
 ) {
 
     @PostMapping("/verification/email")
@@ -22,7 +26,10 @@ class UserController(
     }
 
     @PostMapping
-    fun createUser(@Valid @RequestBody userCreationDto: UserCreationDto) {
-        userAccountService.verifyEmailIsNotExists(userCreationDto.email)
+    fun createUser(@Valid @RequestBody userCreationRequest: UserCreationRequest): UserResponse {
+
+        userAccountService.verifyEmailIsNotExists(userCreationRequest.email)
+        return userService.save(UserCreationDto(userCreationRequest))
+            .let { UserResponse(it.id, it.nickname) }
     }
 }

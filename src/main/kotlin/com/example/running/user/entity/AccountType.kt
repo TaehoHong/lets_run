@@ -15,4 +15,9 @@ class AccountType (
 
     @Column(name = "name", nullable = false, columnDefinition = "VARCHAR(32)")
     val name: String
-)
+) {
+    constructor(id: Short): this(
+        id = id,
+        name = ""
+    )
+}

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import org.hibernate.validator.constraints.Length
 
-class UserCreationDto (
+class UserCreationRequest (
 
     @field:NotNull
     @field:Email
@@ -19,6 +19,6 @@ class UserCreationDto (
     @field:Length(min = 10)
     val nickname: String,
 
-    @field:NotNull
-    val phoneNumber: String
+//    @field:NotNull
+    val phoneNumber: String?
 )
