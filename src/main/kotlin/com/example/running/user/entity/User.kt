@@ -1,7 +1,10 @@
 package com.example.running.user.entity
 
 import com.example.running.common.entity.CreateDateTime
+import com.example.running.user.entity.converter.AuthorityTypeConverter
+import com.example.running.user.enums.AuthorityType
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -21,6 +24,10 @@ class User(
     @Column(name = "phone_number", nullable = false, columnDefinition = "CHAR(11)")
     val phoneNumber: String? = null,
 
+    @Convert(converter = AuthorityTypeConverter::class)
+    @Column(name = "authority_type", nullable = false, columnDefinition = "CHAR(1)")
+    val authorityType: AuthorityType,
+
     @ColumnDefault("1")
     @Column(name = "is_enabled", nullable = false, columnDefinition = "TINYINT(1)")
     val isEnabled: Boolean = true,
@@ -36,6 +43,7 @@ class User(
 
     constructor(id: Long): this(
         id = id,
-        nickname = ""
+        nickname = "",
+        authorityType = AuthorityType.USER
     )
 }

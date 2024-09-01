@@ -15,6 +15,10 @@ logging:
       web: DEBUG
 
 
+token:
+  expiration:
+    access: 14400
+    refresh: 144000
 
 oauth:
   google:

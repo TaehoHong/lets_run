@@ -7,6 +7,8 @@ import com.example.running.user.service.UserAccountService
 import com.example.running.user.service.UserService
 import com.example.running.user.service.dto.UserCreationDto
 import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -31,5 +33,11 @@ class UserController(
         userAccountService.verifyEmailIsNotExists(userCreationRequest.email)
         return userService.save(UserCreationDto(userCreationRequest))
             .let { UserResponse(it.id, it.nickname) }
+    }
+
+    @GetMapping("/{id}")
+    fun get(@PathVariable id: Long): String {
+
+        return "유저유저"
     }
 }
