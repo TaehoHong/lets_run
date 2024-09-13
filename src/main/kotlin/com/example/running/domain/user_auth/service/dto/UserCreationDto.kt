@@ -4,14 +4,12 @@ import com.example.running.user.controller.dto.UserCreationRequest
 
 class UserCreationDto(
     val email: String,
-    val password: String,
-    val nickname: String,
-    val phoneNumber: String?
+    val password: String? = null,
+    val nickname: String
 ) {
     constructor(userCreationRequest: UserCreationRequest): this(
         email = userCreationRequest.email,
         password = userCreationRequest.password,
-        nickname = userCreationRequest.nickname,
-        phoneNumber = userCreationRequest.phoneNumber
+        nickname = userCreationRequest.nickname
     )
 }

@@ -1,0 +1,1 @@
+ALTER TABLE user_account CHANGE password password        VARCHAR(256)                                NULL COMMENT '비밀번호';

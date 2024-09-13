@@ -21,9 +21,6 @@ class User(
     @Column(name = "nickname", nullable = false, columnDefinition = "VARCHAR(128)")
     val nickname: String,
 
-    @Column(name = "phone_number", nullable = false, columnDefinition = "CHAR(11)")
-    val phoneNumber: String? = null,
-
     @Convert(converter = AuthorityTypeConverter::class)
     @Column(name = "authority_type", nullable = false, columnDefinition = "CHAR(1)")
     val authorityType: AuthorityType,

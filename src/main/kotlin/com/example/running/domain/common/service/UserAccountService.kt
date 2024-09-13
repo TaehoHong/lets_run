@@ -24,14 +24,19 @@ class UserAccountService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun save(userId: Long, email: String, password: String) {
+    fun save(userId: Long, email: String, password: String?) {
         userAccountRepository.save(
             UserAccount(
                 userId = userId,
                 accountTypeId = AccountTypeName.SELF.id,
                 email = email,
-                password = passwordEncoder.encode(password)
+                password = password?.let{ passwordEncoder.encode(it) }
             )
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun getByEmail(email: String): UserAccount? {
+        return userAccountRepository.findByEmail(email)
     }
 }

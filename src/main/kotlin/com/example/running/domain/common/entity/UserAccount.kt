@@ -28,7 +28,7 @@ class UserAccount(
     val email: String,
 
     @Column(name = "password", nullable = false, columnDefinition = "VARCHAR(256)")
-    val password: String,
+    val password: String? = null,
 
     @ColumnDefault("1")
     @Column(name = "is_enabled", nullable = false, columnDefinition = "TINYINT(1)")
@@ -43,7 +43,7 @@ class UserAccount(
     @Column(name = "id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     val id: Long = 0
 
-    constructor(userId: Long, accountTypeId: Short, email: String, password: String): this(
+    constructor(userId: Long, accountTypeId: Short, email: String, password: String?): this(
         user = User(id = userId),
         accountType = AccountType(id = accountTypeId),
         email = email,

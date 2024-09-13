@@ -25,6 +25,11 @@ class SecurityConfig() {
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET,"/api/v1/users/*").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/verification/email").permitAll()
+
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/oauth/google").permitAll()
+
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/avatars/main").permitAll()
+
                 authorizeHttpRequests.anyRequest().denyAll()
             }.build()
     }

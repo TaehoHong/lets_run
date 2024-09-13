@@ -1,0 +1,7 @@
+package com.example.running.domain.avatar.repository
+
+import com.example.running.domain.avatar.entity.Avatar
+import org.springframework.data.jpa.repository.JpaRepository
+
+interface AvatarRepository: JpaRepository<Avatar, Long> {
+}

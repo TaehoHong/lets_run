@@ -38,3 +38,7 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+
+### credential 파일 ###
+src/main/resources/credentials/

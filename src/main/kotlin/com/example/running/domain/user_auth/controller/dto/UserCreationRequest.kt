@@ -17,8 +17,5 @@ class UserCreationRequest (
 
     @field:NotNull
     @field:Length(min = 10)
-    val nickname: String,
-
-//    @field:NotNull
-    val phoneNumber: String?
+    val nickname: String
 )
