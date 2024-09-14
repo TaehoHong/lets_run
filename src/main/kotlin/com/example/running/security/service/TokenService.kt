@@ -1,16 +1,26 @@
 package com.example.running.security.service
 
+import com.example.running.config.properties.JwtProperties
+import com.example.running.enums.ErrorCode
+import com.example.running.security.exception.TokenException
 import com.example.running.user.controller.dto.TokenResponse
 import com.example.running.user.enums.AuthorityType
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.jsonwebtoken.Claims
+import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.MalformedJwtException
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.impl.Base64UrlCodec
+import io.jsonwebtoken.security.Keys
+import io.jsonwebtoken.security.SignatureException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.token.Sha512DigestUtils
 import org.springframework.stereotype.Service
+import java.io.IOException
 import java.util.Base64
 import java.util.Date
+import javax.crypto.SecretKey
 
 @Service
 class TokenService {
@@ -24,6 +34,7 @@ class TokenService {
     var REFRESH_TOKEN_EXPIRATION : Long = 144000
 
     val secret = "running_app_token_secret"
+
 
     fun generateTokens(userId: Long, email: String, authorityType: AuthorityType): TokenResponse {
         return TokenResponse(
@@ -47,13 +58,13 @@ class TokenService {
         val claims = createClaims(userId, email, authorityType)
 
         val now = Date()
-        val expiredDate = Date(now.time + tokenExpirationTime)
+        val expiredDate = Date(now.time + (tokenExpirationTime * 1000))
 
         return Jwts.builder()
             .claims(claims)
             .issuedAt(now)
             .expiration(expiredDate)
-            .signWith(SignatureAlgorithm.HS512, getSecretKey())
+            .signWith(getSecretKey())
             .compact()
     }
 
@@ -63,7 +74,7 @@ class TokenService {
             .id(userId.toString())
             .subject(email)
             .also {
-                it.add("role", "ROLE_" + authorityType.name)
+                it.add("role", authorityType.role)
             }.build()
 
     fun decodeTokenPayload(token: String): String? {
@@ -74,31 +85,70 @@ class TokenService {
             }
     }
 
-    private fun getSecretKey() = Base64.getEncoder().encodeToString(
-        Sha512DigestUtils.sha(this.secret)
+    private fun getSecretKey() = Keys.hmacShaKeyFor(
+        Base64.getEncoder().encode(Sha512DigestUtils.sha(this.secret))
     )
 
 
-//    @Throws(IOException::class)
-//    fun verifyToken(tokenHeader: String): Boolean {
-//        if (!tokenHeader.startsWith("Bearer ")) {
-//            throw new TokenException(ErrorCode.UNAUTHORIZED, "토큰이 존재하지 않거나 잘못된 토큰입니다.");
-//        } else {
-//            try {
-//                String token = tokenHeader.replace(JwtProperties.TOKEN_PREFIX, "");
-//                log.info("token={}", token);
-//                Jws<Claims> claims = Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token);
-//                return claims.getBody().getExpiration().after(new Date());
-//            } catch (MalformedJwtException e) {
-//                log.error("JWT token is malformed");
-//                throw new TokenException(ErrorCode.COUNTERFEIT, "위조된 토큰입니다.");
-//            } catch (SignatureException e) {
-//                log.error("Unable to get JWT token", e);
-//                throw new TokenException(ErrorCode.UNAUTHORIZED, "유효하지 않는 토큰");
-//            }catch (ExpiredJwtException e) {
-//                log.error("JWT token has expired", e);
-//                return false;
-//            }
-//        }
-//    }
+    @Throws(IOException::class)
+    fun verifyToken(tokenHeader: String): Boolean {
+        if (!tokenHeader.startsWith(JwtProperties.TOKEN_PREFIX)) {
+            throw TokenException(ErrorCode.UNAUTHORIZED)
+        } else {
+            runCatching {
+                val token = tokenHeader.replace(JwtProperties.TOKEN_PREFIX, "")
+                    .also { log.debug{"token=$it"} }
+
+                val payload = getClaims(token).payload
+
+                return true
+
+            }.onFailure { exception ->
+                when(exception) {
+                    is MalformedJwtException -> {
+                        log.error {"JWT token is malformed"}
+                        ErrorCode.TOKEN_IS_MALFORMED
+                    }
+                    is SignatureException -> {
+                        log.error {"Unable to get JWT token"}
+                        ErrorCode.UNAUTHORIZED
+                    }
+                    is ExpiredJwtException -> {
+                        log.error {"JWT token has expired"}
+                        ErrorCode.TOKEN_IS_EXPIRED
+                    }
+                    else -> {
+                        ErrorCode.UNAUTHORIZED
+                    }
+                }.run {
+                    throw TokenException(this)
+                }
+            }
+        }
+
+        return false
+    }
+
+    fun getId(token: String): String {
+        val payload: Claims = getClaims(token).payload as Claims
+
+        return payload.id
+    }
+
+    fun getEmail(token: String): String {
+        val payload: Claims = getClaims(token).payload as Claims
+
+        return payload.subject
+    }
+
+    fun getAuthorityType(token: String): AuthorityType {
+        val payload: Claims = getClaims(token).payload as Claims
+
+        return payload.get("role")
+            .let {
+                AuthorityType.get(it as String)
+            }
+    }
+
+    private fun getClaims(token: String) = Jwts.parser().verifyWith(getSecretKey()).build().parse(token)
 }
