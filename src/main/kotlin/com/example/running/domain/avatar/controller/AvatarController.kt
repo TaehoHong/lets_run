@@ -1,7 +1,9 @@
 package com.example.running.domain.avatar.controller
 
+
+import com.example.running.domain.avatar.controller.dto.AvatarResponse
 import com.example.running.domain.avatar.service.AvatarService
-import org.springframework.security.core.context.SecurityContextHolder
+import com.example.running.utils.JwtPayloadParser
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -13,9 +15,10 @@ class AvatarController(
 ) {
 
     @GetMapping("/main")
-    fun getMain(): String {
+    fun getMain(): AvatarResponse {
 
-        return "avatar"
-
+        return AvatarResponse(
+            avatarService.getMainAvatar(JwtPayloadParser.getUserId())
+        )
     }
 }

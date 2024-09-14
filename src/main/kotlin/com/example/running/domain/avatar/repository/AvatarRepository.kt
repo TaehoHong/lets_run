@@ -4,4 +4,6 @@ import com.example.running.domain.avatar.entity.Avatar
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface AvatarRepository: JpaRepository<Avatar, Long> {
+
+    fun findByUserIdAndIsMain(userId: Long, isMain: Boolean): Avatar?
 }

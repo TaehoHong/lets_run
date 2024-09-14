@@ -8,6 +8,10 @@ spring:
     username: local
     password: local
 
+  jpa:
+    properties:
+      hibernate:
+        show_sql: true
 
 logging:
   level:

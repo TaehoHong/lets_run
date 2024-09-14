@@ -26,12 +26,12 @@ CREATE TABLE IF NOT EXISTS item (
 
 CREATE TABLE IF NOT EXISTS avatar (
 
-    id          BIGINT UNSIGNED     NOT NULL,
-    user_id     BIGINT UNSIGNED     NOT NULL,
+    id          BIGINT UNSIGNED AUTO_INCREMENT      NOT NULL,
+    user_id     BIGINT UNSIGNED                     NOT NULL,
 
-    is_main     TINYINT(1)          NOT NULL,
+    is_main     TINYINT(1)                          NOT NULL,
 
-    order_index TINYINT UNSIGNED    NOT NULL,
+    order_index TINYINT UNSIGNED                    NOT NULL,
 
     PRIMARY KEY (id),
     CONSTRAINT fk__avatar__user_id FOREIGN KEY (user_id) REFERENCES user(id)
