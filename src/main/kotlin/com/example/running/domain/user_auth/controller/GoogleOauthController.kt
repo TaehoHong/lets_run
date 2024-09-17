@@ -7,6 +7,8 @@ import com.example.running.user.service.UserSignUpService
 import com.example.running.user.service.dto.OAuthAccountInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -25,6 +27,10 @@ class GoogleOauthController(
 
     private val log = KotlinLogging.logger{}
 
+    @Operation(
+        summary = "구글 로그인/회원가입",
+        description = "구글 OAuth2 계정이 없는 경우 회원가입"
+    )
     @GetMapping
     fun getToken(@RequestParam code: String): TokenResponse {
         return googleOauthService.requestToken(code)

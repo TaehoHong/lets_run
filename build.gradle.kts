@@ -59,7 +59,9 @@ dependencies {
     implementation("jakarta.annotation:jakarta.annotation-api")
 
     kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
-//    kapt("org.springframework.boot:spring-boot-configuration-processor")
+
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2")
+//    implementation("io.springfox:springfox-boot-starter:3.0.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
