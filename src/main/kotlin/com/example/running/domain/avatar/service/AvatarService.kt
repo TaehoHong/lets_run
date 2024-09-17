@@ -9,7 +9,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class AvatarService(
-    private val avatarRepository: AvatarRepository
+    private val avatarRepository: AvatarRepository,
+    private val avatarUserItemService: AvatarUserItemService
 ) {
 
     @Transactional(readOnly = true)
@@ -17,9 +18,9 @@ class AvatarService(
         val avatar = avatarRepository.findByUserIdAndIsMain(userId, true)
             ?: run { saveAvatar(userId, true) }
 
-        return AvatarDto(avatar)
+        return AvatarDto(
+            avatar, avatarUserItemService.getAllByAvatarId(avatar.id))
     }
-
 
     fun saveAvatar(userId: Long, isMain: Boolean): Avatar {
         return avatarRepository.save(
