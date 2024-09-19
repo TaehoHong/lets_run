@@ -25,6 +25,9 @@ class Item(
     val name: String,
 
     @Column(name = "file_path", nullable = false, columnDefinition = "VARCHAR(64)")
-    val filePath: String
+    val filePath: String,
+
+    @Column(name = "point", nullable = false, columnDefinition = "INT UNSIGNED")
+    val point: Int,
 
 ): CreateDateTime()
