@@ -22,6 +22,5 @@ class ItemController(
             .let {
                 PageResult.of(it) { item -> ItemSearchResponse(item) }
             }
-
     }
 }

@@ -43,8 +43,9 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/avatars/main").authenticated()
 
-
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/items").permitAll()
+
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/user-items").permitAll()
 
                 authorizeHttpRequests.anyRequest().denyAll()
             }

@@ -2,14 +2,7 @@ package com.example.running.domain.avatar.entity
 
 import com.example.running.common.entity.CreateDateTime
 import com.example.running.user.entity.User
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
+import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 import java.time.OffsetDateTime
 
@@ -38,4 +31,12 @@ class UserItem (
     @Column(name = "expire_datetime", columnDefinition = "DATETIME")
     val expireDateTime: OffsetDateTime? = null
 
-) : CreateDateTime()
+) : CreateDateTime() {
+
+    constructor(userId: Long, item: Item) : this(
+        user = User(id = userId),
+        item = item,
+        isEnabled = true,
+        isExpired = false
+    )
+}
