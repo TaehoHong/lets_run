@@ -59,6 +59,12 @@ class ItemQueryRepository(
                 this.and(item.itemType.id.eq(it))
             }
         }
+    }
 
+    fun findAllItemTypeIdByIdIn(ids: List<Long>): List<Short> {
+        return queryFactory.select(item.itemType.id)
+            .from(item)
+            .where(item.id.`in`(ids))
+            .fetch()
     }
 }

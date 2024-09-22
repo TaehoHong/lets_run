@@ -1,5 +1,5 @@
 package com.example.running.domain.avatar.controller.dto
 
-class PutAvatarRequest(
+class AvatarItemRequest(
     val itemIds: List<Long>
 )

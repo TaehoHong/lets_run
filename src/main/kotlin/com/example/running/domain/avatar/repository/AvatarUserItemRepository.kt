@@ -28,4 +28,16 @@ class AvatarUserItemQueryRepository(private val queryFactory: JPAQueryFactory) {
             .where(avatarUserItem.id.avatarId.eq(avatarId))
             .fetch()
     }
+
+    fun findAllIdsByAvatarIdAndItemTypeIds(avatarId: Long, itemTypeIds: List<Short>): List<AvatarUserItemId> {
+
+        return queryFactory.select(avatarUserItem.id)
+            .from(avatarUserItem)
+            .innerJoin(avatarUserItem.userItem, userItem)
+            .innerJoin(userItem.item, item)
+            .where(
+                avatarUserItem.id.avatarId.eq(avatarId),
+                item.itemType.id.`in`(itemTypeIds)
+            ).fetch()
+    }
 }

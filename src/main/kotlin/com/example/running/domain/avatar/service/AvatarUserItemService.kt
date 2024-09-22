@@ -26,6 +26,12 @@ class AvatarUserItemService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
+    fun deleteAllByAvatarIdAndItemTypeIds(avatarId: Long, itemTypeIds: List<Short>) {
+        avatarUserItemQueryRepository.findAllIdsByAvatarIdAndItemTypeIds(avatarId, itemTypeIds)
+            .let { avatarUserItemRepository.deleteAllByIdInBatch(it) }
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
     fun saveAll(avatarId: Long, itemIds: List<Long>) {
 
         userItemService.getAllByItemIds(itemIds)

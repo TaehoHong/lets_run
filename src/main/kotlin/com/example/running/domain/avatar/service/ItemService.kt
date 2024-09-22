@@ -31,4 +31,9 @@ class ItemService(
     fun getAllByIds(ids: List<Long>): List<Item> {
         return itemRepository.findAllById(ids)
     }
+
+    @Transactional(readOnly = true)
+    fun getAllItemTypeId(ids: List<Long>): List<Short> {
+        return itemQueryRepository.findAllItemTypeIdByIdIn(ids)
+    }
 }

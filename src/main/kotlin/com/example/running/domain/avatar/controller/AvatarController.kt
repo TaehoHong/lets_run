@@ -1,8 +1,8 @@
 package com.example.running.domain.avatar.controller
 
 
+import com.example.running.domain.avatar.controller.dto.AvatarItemRequest
 import com.example.running.domain.avatar.controller.dto.AvatarResponse
-import com.example.running.domain.avatar.controller.dto.PutAvatarRequest
 import com.example.running.domain.avatar.service.AvatarService
 import com.example.running.utils.JwtPayloadParser
 import org.springframework.web.bind.annotation.*
@@ -22,7 +22,7 @@ class AvatarController(
     }
 
     @PutMapping("/{id}")
-    fun put(@PathVariable id: Long, @RequestBody request: PutAvatarRequest): AvatarResponse {
+    fun put(@PathVariable id: Long, @RequestBody request: AvatarItemRequest): AvatarResponse {
 
         avatarService.verifyAvatarExists(
             userId = JwtPayloadParser.getUserId(),
@@ -31,6 +31,19 @@ class AvatarController(
 
         return AvatarResponse(
             avatarService.put(id, request.itemIds)
+        )
+    }
+
+    @PostMapping("/{id}/items")
+    fun saveItem(@PathVariable id: Long, @RequestBody request: AvatarItemRequest): AvatarResponse {
+
+        avatarService.verifyAvatarExists(
+            userId = JwtPayloadParser.getUserId(),
+            avatarId = id
+        )
+
+        return AvatarResponse(
+            avatarService.addOrChangeItems(id, request.itemIds)
         )
     }
 }

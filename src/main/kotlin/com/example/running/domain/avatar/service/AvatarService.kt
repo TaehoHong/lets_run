@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AvatarService(
     private val avatarRepository: AvatarRepository,
-    private val avatarUserItemService: AvatarUserItemService
+    private val avatarUserItemService: AvatarUserItemService,
+    private val itemService: ItemService
 ) {
 
     @Transactional(readOnly = true)
@@ -44,6 +45,19 @@ class AvatarService(
     fun put(avatarId: Long, itemIds: List<Long>): AvatarDto {
 
         avatarUserItemService.deleteAllByAvatarId(avatarId)
+
+        avatarUserItemService.saveAll(avatarId, itemIds)
+
+        return getMainAvatar(avatarId)
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun addOrChangeItems(avatarId: Long, itemIds: List<Long>): AvatarDto {
+
+        itemService.getAllItemTypeId(itemIds)
+            .let {
+                avatarUserItemService.deleteAllByAvatarIdAndItemTypeIds(avatarId, it)
+            }
 
         avatarUserItemService.saveAll(avatarId, itemIds)
 
