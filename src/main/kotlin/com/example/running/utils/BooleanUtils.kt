@@ -1,11 +1,6 @@
 package com.example.running.utils
 
 
-inline fun Boolean.alsoIfTrue(block:() -> Unit): Boolean {
+inline fun Boolean.alsoIfTrue(block:() -> Unit) = if(this) block() else this
 
-    if(this == true) {
-        block()
-    }
-
-    return this
-}
+inline fun Boolean.alsoIfFalse(block:() -> Unit) = if(!this) block() else this

@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 interface AvatarUserItemRepository: JpaRepository<AvatarUserItem, AvatarUserItemId> {
+
+    fun deleteAllByAvatarId(avatarId: Long)
 }
 
 @Repository

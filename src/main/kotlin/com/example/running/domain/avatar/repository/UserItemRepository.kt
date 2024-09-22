@@ -1,5 +1,6 @@
 package com.example.running.domain.avatar.repository
 
+import com.example.running.domain.avatar.entity.QUserItem.userItem
 import com.example.running.domain.avatar.entity.UserItem
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
@@ -13,4 +14,11 @@ interface UserItemRepository: JpaRepository<UserItem, Long> {
 @Repository
 class UserItemQueryRepository(private val queryFactory: JPAQueryFactory) {
 
+
+    fun findAllByItemIdIn(itemIds: List<Long>): List<UserItem> {
+        return queryFactory.selectFrom(userItem)
+            .innerJoin(userItem.item).fetchJoin()
+            .where(userItem.item.id.`in`(itemIds))
+            .fetch()
+    }
 }

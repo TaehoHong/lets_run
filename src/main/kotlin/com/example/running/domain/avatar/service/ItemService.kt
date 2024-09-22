@@ -26,4 +26,9 @@ class ItemService(
         return itemRepository.findById(id)
             .orElseThrow { RuntimeException("아이템을 찾을 수 없습니다.") }
     }
+
+    @Transactional(readOnly = true)
+    fun getAllByIds(ids: List<Long>): List<Item> {
+        return itemRepository.findAllById(ids)
+    }
 }

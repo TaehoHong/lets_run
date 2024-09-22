@@ -4,6 +4,7 @@ import com.example.running.domain.avatar.entity.Avatar
 import com.example.running.domain.avatar.repository.AvatarRepository
 import com.example.running.domain.avatar.service.dto.AvatarDto
 import com.example.running.user.entity.User
+import com.example.running.utils.alsoIfFalse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,6 +23,7 @@ class AvatarService(
             avatar, avatarUserItemService.getAllByAvatarId(avatar.id))
     }
 
+    @Transactional(rollbackFor = [Exception::class])
     fun saveAvatar(userId: Long, isMain: Boolean): Avatar {
         return avatarRepository.save(
             Avatar(
@@ -30,5 +32,21 @@ class AvatarService(
                 orderIndex = 0
             )
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun verifyAvatarExists(userId: Long, avatarId: Long) {
+        avatarRepository.existsByUserIdAndId(userId, avatarId)
+            .alsoIfFalse { throw IllegalArgumentException("Avatar not found") }
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun put(avatarId: Long, itemIds: List<Long>): AvatarDto {
+
+        avatarUserItemService.deleteAllByAvatarId(avatarId)
+
+        avatarUserItemService.saveAll(avatarId, itemIds)
+
+        return getMainAvatar(avatarId)
     }
 }
