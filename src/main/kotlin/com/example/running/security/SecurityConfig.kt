@@ -45,6 +45,7 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.PUT, "/api/v1/avatars/*").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/avatars/*/items").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/avatars/*/items/*").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/avatars/*/items").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/items").permitAll()
 

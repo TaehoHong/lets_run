@@ -59,4 +59,15 @@ class AvatarController(
 
         avatarUserItemService.deleteByAvatarIdAndItemId(id, itemId)
     }
+
+    @DeleteMapping("/{id}/items")
+    fun deleteAllAvatarItem(@PathVariable id: Long) {
+
+        avatarService.verifyAvatarExists(
+            userId = JwtPayloadParser.getUserId(),
+            avatarId = id
+        )
+
+        avatarUserItemService.deleteAllByAvatarId(id)
+    }
 }
