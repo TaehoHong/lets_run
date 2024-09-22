@@ -40,4 +40,14 @@ class AvatarUserItemQueryRepository(private val queryFactory: JPAQueryFactory) {
                 item.itemType.id.`in`(itemTypeIds)
             ).fetch()
     }
+
+    fun findIdByAvatarIdAndItemId(avatarId: Long, itemId: Long): AvatarUserItemId? {
+        return queryFactory.select(avatarUserItem.id)
+            .from(avatarUserItem)
+            .innerJoin(avatarUserItem.userItem, userItem)
+            .where(
+                avatarUserItem.id.avatarId.eq(avatarId),
+                userItem.item.id.eq(itemId)
+            ).fetchFirst()
+    }
 }

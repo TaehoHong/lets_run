@@ -4,13 +4,15 @@ package com.example.running.domain.avatar.controller
 import com.example.running.domain.avatar.controller.dto.AvatarItemRequest
 import com.example.running.domain.avatar.controller.dto.AvatarResponse
 import com.example.running.domain.avatar.service.AvatarService
+import com.example.running.domain.avatar.service.AvatarUserItemService
 import com.example.running.utils.JwtPayloadParser
 import org.springframework.web.bind.annotation.*
 
 @RequestMapping("/api/v1/avatars")
 @RestController
 class AvatarController(
-    private val avatarService: AvatarService
+    private val avatarService: AvatarService,
+    private val avatarUserItemService: AvatarUserItemService
 ) {
 
     @GetMapping("/main")
@@ -45,5 +47,16 @@ class AvatarController(
         return AvatarResponse(
             avatarService.addOrChangeItems(id, request.itemIds)
         )
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    fun deleteAvatarItem(@PathVariable id: Long, @PathVariable itemId: Long) {
+
+        avatarService.verifyAvatarExists(
+            userId = JwtPayloadParser.getUserId(),
+            avatarId = id
+        )
+
+        avatarUserItemService.deleteByAvatarIdAndItemId(id, itemId)
     }
 }

@@ -57,4 +57,12 @@ class AvatarUserItemService(
             .isNotEmpty()
             .alsoIfTrue { throw IllegalArgumentException("중복된 타입이 존재합니다.")}
     }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun deleteByAvatarIdAndItemId(avatarId: Long, itemId: Long) {
+        avatarUserItemQueryRepository.findIdByAvatarIdAndItemId(avatarId, itemId)
+            ?.let {
+                avatarUserItemRepository.deleteById(it)
+            }
+    }
 }
