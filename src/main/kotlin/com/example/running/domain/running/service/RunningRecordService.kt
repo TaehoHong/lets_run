@@ -3,7 +3,10 @@ package com.example.running.domain.running.service
 import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.repository.RunningRecordQueryRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
+import com.example.running.domain.running.service.dto.RunningRecordDto
 import com.example.running.domain.running.service.dto.StartRunningDto
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -27,5 +30,11 @@ class RunningRecordService(
 
     private fun endRecord(userId: Long) {
         runningRecordQueryRepository.updateIsEndById(true, userId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getDtoPage(userId: Long, pageable: Pageable): Page<RunningRecordDto>  {
+        return runningRecordRepository.findByUserId(userId, pageable)
+            .map { RunningRecordDto(it) }
     }
 }

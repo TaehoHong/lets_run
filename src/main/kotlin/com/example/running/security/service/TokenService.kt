@@ -10,7 +10,6 @@ import io.jsonwebtoken.Claims
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.MalformedJwtException
-import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.impl.Base64UrlCodec
 import io.jsonwebtoken.security.Keys
 import io.jsonwebtoken.security.SignatureException
@@ -18,9 +17,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.token.Sha512DigestUtils
 import org.springframework.stereotype.Service
 import java.io.IOException
-import java.util.Base64
-import java.util.Date
-import javax.crypto.SecretKey
+import java.util.*
 
 @Service
 class TokenService {

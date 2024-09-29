@@ -1,6 +1,5 @@
 package com.example.running.utils
 
-import io.github.oshai.kotlinlogging.KLogging
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
