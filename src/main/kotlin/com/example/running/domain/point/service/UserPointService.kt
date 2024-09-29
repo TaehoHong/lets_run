@@ -12,6 +12,14 @@ class UserPointService(
     private val userPointRepository: UserPointRepository
 ) {
 
+    @Transactional(readOnly = true)
+    fun verifyPoint(userId: Long, point: Int) {
+        getByUserId(userId).apply {
+            if (this.point < point) {
+                throw RuntimeException("포인트가 부족합니다.")
+            }
+        }
+    }
 
     @Transactional(rollbackFor = [Exception::class])
     fun updatePoint(pointUsageDto: PointUsageDto) {

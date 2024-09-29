@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class UserItemController(
     private val userItemService: UserItemService,
-    private val itemPurchaseService: ItemPurchaseService
+    private val itemPurchaseService: ItemPurchaseService,
 
 ){
 
