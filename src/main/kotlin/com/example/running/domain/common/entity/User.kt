@@ -1,15 +1,9 @@
 package com.example.running.user.entity
 
-import com.example.running.common.entity.CreateDateTime
+import com.example.running.common.entity.CreatedDatetime
 import com.example.running.user.entity.converter.AuthorityTypeConverter
 import com.example.running.user.enums.AuthorityType
-import jakarta.persistence.Column
-import jakarta.persistence.Convert
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
+import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 
 @Entity
@@ -32,7 +26,7 @@ class User(
     @ColumnDefault("0")
     @Column(name = "is_deleted", nullable = false, columnDefinition = "TINYINT(1)")
     val isDeleted: Boolean = false
-): CreateDateTime() {
+): CreatedDatetime() {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, columnDefinition = "BIGINT UNSIGNED")

@@ -1,6 +1,6 @@
 package com.example.running.domain.running.entity
 
-import com.example.running.common.entity.CreateDateTime
+import com.example.running.common.entity.CreatedDatetime
 import jakarta.persistence.*
 import java.time.OffsetDateTime
 
@@ -41,4 +41,4 @@ class RunningRecordItem(
     @Column(name = "end_datetime",nullable = false, columnDefinition = "DATETIME")
     val endDatetime: OffsetDateTime
 
-): CreateDateTime()
+): CreatedDatetime()

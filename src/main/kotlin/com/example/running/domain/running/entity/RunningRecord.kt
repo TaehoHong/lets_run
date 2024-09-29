@@ -1,6 +1,6 @@
 package com.example.running.domain.running.entity
 
-import com.example.running.common.entity.CreateDateTime
+import com.example.running.common.entity.CreatedDatetime
 import com.example.running.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
@@ -49,7 +49,7 @@ class RunningRecord(
     @Column(name = "end_datetime", columnDefinition = "DATETIME")
     val endDatetime: OffsetDateTime? = null
 
-): CreateDateTime(){
+): CreatedDatetime(){
 
     constructor(userId: Long): this(
         user = User(id = userId)

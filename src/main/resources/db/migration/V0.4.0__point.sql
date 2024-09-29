@@ -17,6 +17,7 @@ CREATE OR REPLACE TABLE user_point (
     user_id             BIGINT UNSIGNED                     NOT NULL,
     point               INT UNSIGNED        DEFAULT 0       NOT NULL COMMENT '포인트',
 
+    created_datetime    DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_datetime    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
 
     PRIMARY KEY (user_id),

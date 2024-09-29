@@ -1,6 +1,6 @@
 package com.example.running.domain.avatar.entity
 
-import com.example.running.common.entity.CreateDateTime
+import com.example.running.common.entity.CreatedDatetime
 import com.example.running.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
@@ -31,7 +31,7 @@ class UserItem (
     @Column(name = "expire_datetime", columnDefinition = "DATETIME")
     val expireDateTime: OffsetDateTime? = null
 
-) : CreateDateTime() {
+) : CreatedDatetime() {
 
     constructor(userId: Long, item: Item) : this(
         user = User(id = userId),

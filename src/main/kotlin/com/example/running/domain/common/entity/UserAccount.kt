@@ -1,15 +1,7 @@
 package com.example.running.user.entity
 
-import com.example.running.common.entity.CreateDateTime
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.Table
+import com.example.running.common.entity.CreatedDatetime
+import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 
 @Entity
@@ -37,7 +29,7 @@ class UserAccount(
     @ColumnDefault("0")
     @Column(name = "is_deleted", nullable = false, columnDefinition = "TINYINT(1)")
     val isDeleted: Boolean = false,
-): CreateDateTime() {
+): CreatedDatetime() {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
