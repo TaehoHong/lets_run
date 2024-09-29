@@ -13,10 +13,14 @@ class UserPoint(
     val user: User,
 
     @Column(name = "point", nullable = false, columnDefinition = "INT UNSIGNED")
-    val point: Int = 0
+    var point: Int = 0
 
 ): BaseDatetime() {
 
     @Id @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     val userId: Long = user.id
+
+    fun updatePoint(point: Int) {
+        this.point += point
+    }
 }
