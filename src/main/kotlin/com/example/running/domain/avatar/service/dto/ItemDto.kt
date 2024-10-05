@@ -8,13 +8,15 @@ class ItemDto (
     val itemTypeDto: ItemTypeDto,
     val name: String,
     val filePath: String,
-    val point: Int
+    val point: Int,
+    val isOwnedByUser: Boolean
 ) {
-    @QueryProjection constructor(item: Item): this(
+    @QueryProjection constructor(item: Item, isOwnedByUser: Boolean): this(
         id = item.id,
         name = item.name,
         filePath = item.filePath,
         point = item.point,
-        itemTypeDto = ItemTypeDto(item.itemType)
+        itemTypeDto = ItemTypeDto(item.itemType),
+        isOwnedByUser = isOwnedByUser
     )
 }

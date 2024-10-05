@@ -5,6 +5,7 @@ import com.example.running.domain.avatar.entity.Item
 import com.example.running.domain.avatar.repository.ItemQueryRepository
 import com.example.running.domain.avatar.repository.ItemRepository
 import com.example.running.domain.avatar.service.dto.ItemDto
+import com.example.running.utils.JwtPayloadParser
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -18,7 +19,11 @@ class ItemService(
 
     @Transactional(readOnly = true)
     fun getItemDtoPage(itemSearchRequest: ItemSearchRequest, pageable: Pageable): Page<ItemDto> {
-        return itemQueryRepository.findItemDtoPage(itemSearchRequest, pageable)
+        return itemQueryRepository.findItemDtoPage(
+            JwtPayloadParser.getUserId(),
+            itemSearchRequest,
+            pageable
+        )
     }
 
     @Transactional(readOnly = true)

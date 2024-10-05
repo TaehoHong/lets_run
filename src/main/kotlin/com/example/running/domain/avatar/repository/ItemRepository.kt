@@ -4,6 +4,7 @@ import com.example.running.domain.avatar.controller.dto.ItemSearchRequest
 import com.example.running.domain.avatar.entity.Item
 import com.example.running.domain.avatar.entity.QItem.item
 import com.example.running.domain.avatar.entity.QItemType.itemType
+import com.example.running.domain.avatar.entity.QUserItem.userItem
 import com.example.running.domain.avatar.service.dto.ItemDto
 import com.example.running.domain.avatar.service.dto.QItemDto
 import com.querydsl.core.BooleanBuilder
@@ -22,20 +23,21 @@ class ItemQueryRepository(
     private val queryFactory: JPAQueryFactory
 ) {
 
-    fun findItemDtoPage(itemSearchRequest: ItemSearchRequest, pageable: Pageable): Page<ItemDto> {
+    fun findItemDtoPage(userId: Long, itemSearchRequest: ItemSearchRequest, pageable: Pageable): Page<ItemDto> {
         return PageImpl(
-            findAllItems(itemSearchRequest, pageable),
+            findAllItems(userId, itemSearchRequest, pageable),
             pageable,
-            countAllItems(itemSearchRequest)
+            countAllItems(userId, itemSearchRequest)
         )
     }
 
-    private fun findAllItems(itemSearchRequest: ItemSearchRequest, pageable: Pageable): List<ItemDto> {
+    private fun findAllItems(userId: Long, itemSearchRequest: ItemSearchRequest, pageable: Pageable): List<ItemDto> {
 
         return queryFactory
-            .select(QItemDto(item))
+            .select(QItemDto(item, userItem.isNotNull))
             .from(item)
             .innerJoin(item.itemType, itemType).fetchJoin()
+            .leftJoin(userItem).on(userItem.item.id.eq(item.id).and(userItem.user.id.eq(userId)))
             .where(getWhereClause(itemSearchRequest))
             .offset(pageable.offset)
             .limit(pageable.pageSize.toLong())
@@ -44,17 +46,23 @@ class ItemQueryRepository(
 
 
 
-    private fun countAllItems(itemSearchRequest: ItemSearchRequest): Long {
+    private fun countAllItems(userId: Long, itemSearchRequest: ItemSearchRequest): Long {
         return queryFactory
             .select(item.count())
             .from(item)
             .innerJoin(item.itemType, itemType)
+            .leftJoin(userItem).on(userItem.item.id.eq(item.id).and(userItem.user.id.eq(userId)))
             .where(getWhereClause(itemSearchRequest))
             .fetchFirst()?: 0
     }
 
     private fun getWhereClause(itemSearchRequest: ItemSearchRequest): BooleanBuilder {
         return BooleanBuilder().apply {
+
+            if(itemSearchRequest.excludeMyItems) {
+                this.and(userItem.isNull)
+            }
+
             itemSearchRequest.itemTypeId?.let {
                 this.and(item.itemType.id.eq(it))
             }

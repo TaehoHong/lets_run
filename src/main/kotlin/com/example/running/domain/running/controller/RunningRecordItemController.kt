@@ -21,7 +21,6 @@ class RunningRecordItemController(
     fun recordItem(@PathVariable(name = "id") runningRecordId: Long,
                    @Valid postRequest: PostRequest
     ) {
-        
         RunningRecordItemDto(
             distance = postRequest.distance,
             durationSec = postRequest.durationSec,
