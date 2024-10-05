@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
+import java.time.OffsetDateTime
 
 interface RunningRecordRepository: JpaRepository<RunningRecord, Long> {
 
@@ -26,5 +27,15 @@ class RunningRecordQueryRepository(
                 runningRecord.isEnd.ne(false)
             )
             .execute()
+    }
+
+    fun getAllByUserIdAndEndDatetimeBetween(userId: Long, start: OffsetDateTime, end: OffsetDateTime): List<RunningRecord> {
+        return queryFactory.selectFrom(runningRecord)
+            .where(
+                runningRecord.user.id.eq(userId),
+                runningRecord.isStatisticIncluded.isTrue,
+                runningRecord.isEnd.isTrue,
+                runningRecord.endDatetime.between(start, end)
+            ).fetch()
     }
 }

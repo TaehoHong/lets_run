@@ -54,6 +54,8 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running").authenticated()
 
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/statistics").authenticated()
+
                 authorizeHttpRequests.anyRequest().denyAll()
             }
             .exceptionHandling{ handling ->
