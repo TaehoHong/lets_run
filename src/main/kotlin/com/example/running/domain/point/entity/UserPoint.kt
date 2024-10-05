@@ -20,6 +20,8 @@ class UserPoint(
     @Id @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     val userId: Long = user.id
 
+    constructor(userId: Long, point: Int = 0): this(User(id = userId), point)
+
     fun updatePoint(point: Int) {
         this.point += point
     }

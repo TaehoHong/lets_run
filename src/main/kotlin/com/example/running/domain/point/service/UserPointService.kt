@@ -14,7 +14,7 @@ class UserPointService(
 
     @Transactional(readOnly = true)
     fun verifyPoint(userId: Long, point: Int) {
-        getByUserId(userId).apply {
+        getOrCreateByUserId(userId).apply {
             if (this.point < point) {
                 throw RuntimeException("포인트가 부족합니다.")
             }
@@ -23,7 +23,7 @@ class UserPointService(
 
     @Transactional(rollbackFor = [Exception::class])
     fun updatePoint(pointUsageDto: PointUsageDto) {
-        getByUserId(pointUsageDto.userId).apply {
+        getOrCreateByUserId(pointUsageDto.userId).apply {
             this.point += pointUsageDto.point
         }.let {
             userPointRepository.save(it)
@@ -32,10 +32,14 @@ class UserPointService(
         }
     }
 
-
-    private fun getByUserId(userId: Long): UserPoint {
+    @Transactional(readOnly = true)
+    fun getOrCreateByUserId(userId: Long): UserPoint {
         return userPointRepository.findById(userId)
-            .orElseThrow { RuntimeException("Point not Found") }
+            .orElseGet {
+                userPointRepository.save(UserPoint(userId = userId))
+            }
     }
+
+
 
 }
