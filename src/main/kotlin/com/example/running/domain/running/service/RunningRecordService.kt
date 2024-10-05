@@ -4,6 +4,7 @@ import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.repository.RunningRecordQueryRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.running.service.dto.RunningRecordDto
+import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.domain.running.service.dto.StartRunningDto
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -37,4 +38,29 @@ class RunningRecordService(
         return runningRecordRepository.findByUserId(userId, pageable)
             .map { RunningRecordDto(it) }
     }
+
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateRecord(updateDto: RunningRecordUpdateDto) {
+
+        getByIdAndUserId(updateDto.runningRecordId, updateDto.userId)
+            .apply {
+                this.endRecord(
+                    updateDto.distance,
+                    updateDto.durationSec,
+                    updateDto.cadence,
+                    updateDto.heartRate,
+                    updateDto.calorie,
+                    updateDto.endDateTime
+
+                )
+            }
+
+    }
+
+    private fun getByIdAndUserId(id: Long, userId: Long): RunningRecord {
+        return runningRecordRepository.findByIdAndUserId(id, userId)
+            ?: run { throw RuntimeException("존재하지 않는 러닝 기록입니다.") }
+    }
+
 }

@@ -17,19 +17,19 @@ class RunningRecord(
     val user: User,
 
     @Column(name = "distance", nullable = false, columnDefinition = "INT UNSIGNED")
-    val distance: Long = 0,
+    var distance: Long = 0,
 
     @Column(name = "duration_sec", nullable = false, columnDefinition = "BIGINT UNSIGNED")
-    val durationSec: Long = 0,
+    var durationSec: Long = 0,
 
     @Column(name = "cadence", nullable = false, columnDefinition = "TINYINT UNSIGNED")
-    val cadence: Short = 0,
+    var cadence: Short = 0,
 
     @Column(name = "heart_rate", nullable = false, columnDefinition = "TINYINT UNSIGNED")
-    val heartRate: Short = 0,
+    var heartRate: Short = 0,
 
     @Column(name = "calorie", nullable = false, columnDefinition = "INT UNSIGNED")
-    val calorie: Int = 0,
+    var calorie: Int = 0,
 
     @ColumnDefault("0")
     @Column(name = "is_user_input", nullable = false, columnDefinition = "TINYINT(1)")
@@ -41,17 +41,27 @@ class RunningRecord(
 
     @ColumnDefault("0")
     @Column(name = "is_end", nullable = false, columnDefinition = "TINYINT(1)")
-    val isEnd: Boolean = false,
+    var isEnd: Boolean = false,
 
     @Column(name = "start_datetime", nullable = false, columnDefinition = "DATETIME")
     val startDatetime: OffsetDateTime = OffsetDateTime.now(),
 
     @Column(name = "end_datetime", columnDefinition = "DATETIME")
-    val endDatetime: OffsetDateTime? = null
+    var endDatetime: OffsetDateTime? = null
 
 ): CreatedDatetime(){
 
     constructor(userId: Long): this(
         user = User(id = userId)
     )
+
+    fun endRecord(distance: Long, durationSec: Long, cadence: Short, heartRate: Short, calorie: Int, endDatetime: OffsetDateTime){
+        this.isEnd = true
+        this.distance = distance
+        this.durationSec = durationSec
+        this.cadence = cadence
+        this.heartRate = heartRate
+        this.calorie = calorie
+        this.endDatetime = endDatetime
+    }
 }

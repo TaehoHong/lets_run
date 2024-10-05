@@ -12,6 +12,7 @@ import java.time.OffsetDateTime
 interface RunningRecordRepository: JpaRepository<RunningRecord, Long> {
 
     fun findByUserId(userId: Long, pageable: Pageable): Page<RunningRecord>
+    fun findByIdAndUserId(id: Long, userId: Long): RunningRecord?
 }
 
 @Repository
