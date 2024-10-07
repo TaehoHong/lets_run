@@ -15,6 +15,7 @@ class HealthyCheckController {
 
     @GetMapping("healthy-check")
     fun healthyCheck() : String {
+        //
         return serverName
     }
 
