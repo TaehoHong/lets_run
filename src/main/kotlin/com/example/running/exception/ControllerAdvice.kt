@@ -18,7 +18,7 @@ class ControllerAdvice {
         val errors = mutableMapOf<String, String>()
         ex.bindingResult.allErrors.forEach { error ->
             val fieldName = (error as FieldError).field
-            val errorMessage = error.defaultMessage ?: "Invalid value"
+            val errorMessage = error.defaultMessage ?: "Invalid value ㅇ"
             errors[fieldName] = errorMessage
         }
 
