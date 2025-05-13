@@ -8,9 +8,9 @@ spring:
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://3.34.2.110:3306/running
-    username: running-server-dev
-    password: GJe5fh8!03v^csr
+    url: jdbc:mariadb://localhost:3395/running
+    username: local
+    password: local
 
   jpa:
     properties:

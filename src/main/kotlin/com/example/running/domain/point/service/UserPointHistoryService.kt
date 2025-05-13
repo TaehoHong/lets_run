@@ -23,4 +23,9 @@ class UserPointHistoryService(
             )
         )
     }
+
+    @Transactional(readOnly = true)
+    fun findAll(userId: Long, id: Long?, size: Int): List<UserPointHistory> {
+        return this.userPointHistoryRepository.findAll(userId, id, size)
+    }
 }
