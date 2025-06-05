@@ -1,6 +1,6 @@
-package com.example.running.user.entity.converter
+package com.example.running.domain.common.entity.converter
 
-import com.example.running.user.enums.AuthorityType
+import com.example.running.domain.common.enums.AuthorityType
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
 

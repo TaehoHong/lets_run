@@ -1,6 +1,5 @@
-package com.example.running.user.entity
+package com.example.running.domain.common.entity
 
-import com.example.running.common.entity.CreatedDatetime
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 

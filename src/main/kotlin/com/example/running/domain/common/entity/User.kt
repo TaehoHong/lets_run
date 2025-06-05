@@ -1,8 +1,7 @@
-package com.example.running.user.entity
+package com.example.running.domain.common.entity
 
-import com.example.running.common.entity.CreatedDatetime
-import com.example.running.user.entity.converter.AuthorityTypeConverter
-import com.example.running.user.enums.AuthorityType
+import com.example.running.domain.common.entity.converter.AuthorityTypeConverter
+import com.example.running.domain.common.enums.AuthorityType
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 

@@ -1,6 +1,6 @@
-package com.example.running.user.controller.dto
+package com.example.running.domain.user_auth.controller.dto
 
-import com.example.running.user.enums.AccountTypeName
+import com.example.running.domain.common.enums.AccountTypeName
 
 class LoginGoogleRequest(
     val authorizationCode: String

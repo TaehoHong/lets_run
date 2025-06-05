@@ -1,7 +1,7 @@
-package com.example.running.user.service
+package com.example.running.domain.user_auth.service
 
 import com.example.running.config.properties.CredentialProperties
-import com.example.running.user.service.dto.GoogleTokenDto
+import com.example.running.domain.user_auth.service.dto.GoogleTokenDto
 import com.example.running.utils.WebClientUtils
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging

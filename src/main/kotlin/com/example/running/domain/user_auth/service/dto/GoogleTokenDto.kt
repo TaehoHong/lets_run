@@ -1,4 +1,4 @@
-package com.example.running.user.service.dto
+package com.example.running.domain.user_auth.service.dto
 
 import com.fasterxml.jackson.annotation.JsonProperty
 

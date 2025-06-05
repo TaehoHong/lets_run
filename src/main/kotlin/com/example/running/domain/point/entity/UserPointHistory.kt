@@ -1,6 +1,6 @@
 package com.example.running.domain.point.entity
 
-import com.example.running.common.entity.CreatedDatetime
+import com.example.running.domain.common.entity.CreatedDatetime
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType

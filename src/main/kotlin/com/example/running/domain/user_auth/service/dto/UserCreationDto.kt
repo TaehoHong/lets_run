@@ -1,6 +1,6 @@
-package com.example.running.user.service.dto
+package com.example.running.domain.user_auth.service.dto
 
-import com.example.running.user.controller.dto.UserCreationRequest
+import com.example.running.domain.user_auth.controller.dto.UserCreationRequest
 
 class UserCreationDto(
     val email: String,

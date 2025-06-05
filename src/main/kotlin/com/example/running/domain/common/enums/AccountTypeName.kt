@@ -1,4 +1,4 @@
-package com.example.running.user.enums
+package com.example.running.domain.common.enums
 
 enum class AccountTypeName(val id: Short) {
     SELF(1),

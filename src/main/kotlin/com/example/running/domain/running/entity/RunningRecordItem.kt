@@ -1,6 +1,6 @@
 package com.example.running.domain.running.entity
 
-import com.example.running.common.entity.CreatedDatetime
+import com.example.running.domain.common.entity.CreatedDatetime
 import jakarta.persistence.*
 import java.time.OffsetDateTime
 

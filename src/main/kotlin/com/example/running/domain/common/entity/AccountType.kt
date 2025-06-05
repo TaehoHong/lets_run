@@ -1,4 +1,4 @@
-package com.example.running.user.entity
+package com.example.running.domain.common.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

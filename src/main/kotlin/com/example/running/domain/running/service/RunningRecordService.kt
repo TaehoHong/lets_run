@@ -55,7 +55,6 @@ class RunningRecordService(
 
                 )
             }
-
     }
 
     private fun getByIdAndUserId(id: Long, userId: Long): RunningRecord {

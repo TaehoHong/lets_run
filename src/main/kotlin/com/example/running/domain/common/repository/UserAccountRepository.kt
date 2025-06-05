@@ -1,6 +1,6 @@
-package com.example.running.user.repository
+package com.example.running.domain.common.repository
 
-import com.example.running.user.entity.UserAccount
+import com.example.running.domain.common.entity.UserAccount
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 

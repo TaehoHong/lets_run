@@ -1,11 +1,13 @@
-package com.example.running.user.service
+package com.example.running.domain.user_auth.service
 
+import com.example.running.domain.common.entity.UserAccount
+import com.example.running.domain.common.service.UserAccountService
+import com.example.running.domain.common.service.UserService
+import com.example.running.domain.user_auth.controller.dto.TokenResponse
+import com.example.running.domain.user_auth.service.dto.OAuthAccountInfo
+import com.example.running.domain.user_auth.service.dto.UserCreationDto
 import com.example.running.exception.ApiError
 import com.example.running.security.service.TokenService
-import com.example.running.user.controller.dto.TokenResponse
-import com.example.running.user.entity.UserAccount
-import com.example.running.user.service.dto.OAuthAccountInfo
-import com.example.running.user.service.dto.UserCreationDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

@@ -1,6 +1,6 @@
-package com.example.running.user.controller
+package com.example.running.domain.user_auth.controller
 
-import com.example.running.user.controller.dto.LoginRequest
+import com.example.running.domain.user_auth.controller.dto.LoginRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody

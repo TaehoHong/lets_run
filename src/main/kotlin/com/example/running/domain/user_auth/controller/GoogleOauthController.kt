@@ -1,14 +1,13 @@
-package com.example.running.user.controller
+package com.example.running.domain.user_auth.controller
 
+import com.example.running.domain.user_auth.controller.dto.TokenResponse
+import com.example.running.domain.user_auth.service.GoogleOauthService
+import com.example.running.domain.user_auth.service.UserSignUpService
+import com.example.running.domain.user_auth.service.dto.OAuthAccountInfo
 import com.example.running.security.service.TokenService
-import com.example.running.user.controller.dto.TokenResponse
-import com.example.running.user.service.GoogleOauthService
-import com.example.running.user.service.UserSignUpService
-import com.example.running.user.service.dto.OAuthAccountInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.responses.ApiResponse
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam

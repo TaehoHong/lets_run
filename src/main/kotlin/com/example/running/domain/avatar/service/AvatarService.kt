@@ -3,7 +3,8 @@ package com.example.running.domain.avatar.service
 import com.example.running.domain.avatar.entity.Avatar
 import com.example.running.domain.avatar.repository.AvatarRepository
 import com.example.running.domain.avatar.service.dto.AvatarDto
-import com.example.running.user.entity.User
+import com.example.running.domain.common.entity.User
+
 import com.example.running.utils.alsoIfFalse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

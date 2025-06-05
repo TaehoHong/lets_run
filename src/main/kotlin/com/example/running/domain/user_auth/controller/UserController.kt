@@ -1,18 +1,13 @@
-package com.example.running.user.controller
+package com.example.running.domain.user_auth.controller
 
-import com.example.running.user.controller.dto.UserCreationRequest
-import com.example.running.user.controller.dto.UserResponse
-import com.example.running.user.controller.dto.VerificationEmailDto
-import com.example.running.user.service.UserAccountService
-import com.example.running.user.service.UserService
-import com.example.running.user.service.dto.UserCreationDto
+import com.example.running.domain.common.service.UserAccountService
+import com.example.running.domain.common.service.UserService
+import com.example.running.domain.user_auth.controller.dto.UserCreationRequest
+import com.example.running.domain.user_auth.controller.dto.UserResponse
+import com.example.running.domain.user_auth.controller.dto.VerificationEmailDto
+import com.example.running.domain.user_auth.service.dto.UserCreationDto
 import jakarta.validation.Valid
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/users")

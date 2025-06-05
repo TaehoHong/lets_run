@@ -1,8 +1,8 @@
-package com.example.running.user.service
+package com.example.running.domain.common.service
 
-import com.example.running.user.entity.UserAccount
-import com.example.running.user.enums.AccountTypeName
-import com.example.running.user.repository.UserAccountRepository
+import com.example.running.domain.common.entity.UserAccount
+import com.example.running.domain.common.enums.AccountTypeName
+import com.example.running.domain.common.repository.UserAccountRepository
 import com.example.running.utils.alsoIfTrue
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -30,7 +30,7 @@ class UserAccountService(
                 userId = userId,
                 accountTypeId = AccountTypeName.SELF.id,
                 email = email,
-                password = password?.let{ passwordEncoder.encode(it) }
+                password = password?.let { passwordEncoder.encode(it) }
             )
         )
     }
