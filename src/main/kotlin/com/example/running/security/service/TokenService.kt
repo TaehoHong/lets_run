@@ -16,6 +16,7 @@ import io.jsonwebtoken.security.SignatureException
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.token.Sha512DigestUtils
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.io.IOException
 import java.util.*
 
@@ -33,9 +34,11 @@ class TokenService {
     val secret = "running_app_token_secret"
 
 
-    fun generateTokens(userId: Long, email: String, authorityType: AuthorityType): TokenResponse {
+    @Transactional
+    fun generateTokens(userId: Long, nickname: String, email: String, authorityType: AuthorityType): TokenResponse {
         return TokenResponse(
             userId = userId,
+            nickname = nickname,
             accessToken = generateAccessToken(userId, email, authorityType),
             refreshToken = generateRefreshToken(userId, email, authorityType)
         )

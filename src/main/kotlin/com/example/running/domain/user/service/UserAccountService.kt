@@ -1,8 +1,8 @@
-package com.example.running.domain.common.service
+package com.example.running.domain.user.service
 
-import com.example.running.domain.common.entity.UserAccount
+import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.common.enums.AccountTypeName
-import com.example.running.domain.common.repository.UserAccountRepository
+import com.example.running.domain.user.repository.UserAccountRepository
 import com.example.running.utils.alsoIfTrue
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -11,8 +11,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UserAccountService(
-    val passwordEncoder: PasswordEncoder,
-    val userAccountRepository: UserAccountRepository
+    private val passwordEncoder: PasswordEncoder,
+    private val userAccountRepository: UserAccountRepository
 ) {
 
     @Transactional(readOnly = true)

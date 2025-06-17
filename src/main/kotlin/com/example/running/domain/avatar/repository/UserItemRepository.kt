@@ -1,6 +1,6 @@
 package com.example.running.domain.avatar.repository
 
-import com.example.running.domain.avatar.entity.QUserItem.userItem
+import com.example.running.domain.avatar.entity.QUserItem.Companion.userItem
 import com.example.running.domain.avatar.entity.UserItem
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository

@@ -1,10 +1,9 @@
-package com.example.running.domain.common.entity
+package com.example.running.domain.user.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-
 
 @Entity
 @Table(name = "account_type")

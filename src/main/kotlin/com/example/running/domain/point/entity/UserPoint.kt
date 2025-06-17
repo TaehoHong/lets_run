@@ -1,7 +1,7 @@
 package com.example.running.domain.point.entity
 
 import com.example.running.domain.common.entity.BaseDatetime
-import com.example.running.domain.common.entity.User
+import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
 
 @Entity

@@ -1,6 +1,6 @@
 plugins {
 
-    val kotlinVersion = "2.1.20"
+    val kotlinVersion = "2.1.21"
 
     kotlin("jvm") version kotlinVersion
     kotlin("plugin.spring") version kotlinVersion
@@ -8,7 +8,8 @@ plugins {
     id("io.spring.dependency-management") version "1.1.6"
     kotlin("plugin.jpa") version kotlinVersion
     kotlin("plugin.allopen") version kotlinVersion
-    kotlin("kapt") version kotlinVersion
+//    kotlin("kapt") version kotlinVersion
+    id("com.google.devtools.ksp") version "2.1.21-2.0.1"
     idea
 }
 
@@ -53,12 +54,15 @@ dependencies {
 
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
-    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
-    implementation("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    implementation("io.github.openfeign.querydsl:querydsl-jpa:7.0")
+    ksp("io.github.openfeign.querydsl:querydsl-ksp-codegen:7.0")
+    annotationProcessor("io.github.openfeign.querydsl:querydsl-apt:7.0:jakarta")
+//    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+//    implementation("com.querydsl:querydsl-apt:5.1.0:jakarta")
+//    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
+
     implementation("jakarta.persistence:jakarta.persistence-api")
     implementation("jakarta.annotation:jakarta.annotation-api")
-
-    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2")
 //    implementation("io.springfox:springfox-boot-starter:3.0.0")

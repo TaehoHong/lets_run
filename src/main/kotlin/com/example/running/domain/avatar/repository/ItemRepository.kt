@@ -2,12 +2,12 @@ package com.example.running.domain.avatar.repository
 
 import com.example.running.domain.avatar.controller.dto.ItemSearchRequest
 import com.example.running.domain.avatar.entity.Item
-import com.example.running.domain.avatar.entity.QItem.item
-import com.example.running.domain.avatar.entity.QItemType.itemType
-import com.example.running.domain.avatar.entity.QUserItem.userItem
+import com.example.running.domain.avatar.entity.QItem.Companion.item
+import com.example.running.domain.avatar.entity.QItemType.Companion.itemType
+import com.example.running.domain.avatar.entity.QUserItem.Companion.userItem
 import com.example.running.domain.avatar.service.dto.ItemDto
-import com.example.running.domain.avatar.service.dto.QItemDto
 import com.querydsl.core.BooleanBuilder
+import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -34,8 +34,13 @@ class ItemQueryRepository(
     private fun findAllItems(userId: Long, itemSearchRequest: ItemSearchRequest, pageable: Pageable): List<ItemDto> {
 
         return queryFactory
-            .select(QItemDto(item, userItem.isNotNull))
-            .from(item)
+            .select(
+                Projections.constructor(
+                    ItemDto::class.java,
+                item,
+                    userItem.isNotNull
+                )
+            ).from(item)
             .innerJoin(item.itemType, itemType).fetchJoin()
             .leftJoin(userItem).on(userItem.item.id.eq(item.id).and(userItem.user.id.eq(userId)))
             .where(getWhereClause(itemSearchRequest))

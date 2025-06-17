@@ -1,7 +1,7 @@
 package com.example.running.domain.avatar.entity
 
 import com.example.running.domain.common.entity.CreatedDatetime
-import com.example.running.domain.common.entity.User
+import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 import java.time.OffsetDateTime

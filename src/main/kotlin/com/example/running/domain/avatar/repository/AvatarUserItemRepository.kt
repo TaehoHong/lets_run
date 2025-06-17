@@ -1,10 +1,10 @@
 package com.example.running.domain.avatar.repository
 
 import com.example.running.domain.avatar.entity.AvatarUserItem
-import com.example.running.domain.avatar.entity.QAvatarUserItem.avatarUserItem
-import com.example.running.domain.avatar.entity.QItem.item
-import com.example.running.domain.avatar.entity.QItemType.itemType
-import com.example.running.domain.avatar.entity.QUserItem.userItem
+import com.example.running.domain.avatar.entity.QAvatarUserItem.Companion.avatarUserItem
+import com.example.running.domain.avatar.entity.QItem.Companion.item
+import com.example.running.domain.avatar.entity.QItemType.Companion.itemType
+import com.example.running.domain.avatar.entity.QUserItem.Companion.userItem
 import com.example.running.domain.avatar.entity.id.AvatarUserItemId
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository

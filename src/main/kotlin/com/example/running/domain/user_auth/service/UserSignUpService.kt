@@ -1,8 +1,8 @@
 package com.example.running.domain.user_auth.service
 
-import com.example.running.domain.common.entity.UserAccount
-import com.example.running.domain.common.service.UserAccountService
-import com.example.running.domain.common.service.UserService
+import com.example.running.domain.user.entity.UserAccount
+import com.example.running.domain.user.service.UserAccountService
+import com.example.running.domain.user.service.UserService
 import com.example.running.domain.user_auth.controller.dto.TokenResponse
 import com.example.running.domain.user_auth.service.dto.OAuthAccountInfo
 import com.example.running.domain.user_auth.service.dto.UserCreationDto
@@ -24,7 +24,11 @@ class UserSignUpService(
         return (userAccountService.getByEmail(oAuthAccountInfo.email)
             ?: createUserAndGetUserAccount(oAuthAccountInfo))
             .run {
-                tokenService.generateTokens(this.user.id, this.email, this.user.authorityType)
+                tokenService.generateTokens(
+                    userId = this.user.id,
+                    nickname = this.user.nickname,
+                    email = this.email,
+                    authorityType = this.user.authorityType)
             }
     }
 

@@ -1,5 +1,6 @@
-package com.example.running.domain.common.entity
+package com.example.running.domain.user.entity
 
+import com.example.running.domain.common.entity.CreatedDatetime
 import com.example.running.domain.common.entity.converter.AuthorityTypeConverter
 import com.example.running.domain.common.enums.AuthorityType
 import jakarta.persistence.*

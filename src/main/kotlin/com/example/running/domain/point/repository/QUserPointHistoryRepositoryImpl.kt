@@ -1,7 +1,7 @@
 package com.example.running.domain.point.repository
 
-import com.example.running.domain.point.entity.QPointType.pointType
-import com.example.running.domain.point.entity.QUserPointHistory.userPointHistory
+import com.example.running.domain.point.entity.QPointType.Companion.pointType
+import com.example.running.domain.point.entity.QUserPointHistory.Companion.userPointHistory
 import com.example.running.domain.point.entity.UserPointHistory
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory

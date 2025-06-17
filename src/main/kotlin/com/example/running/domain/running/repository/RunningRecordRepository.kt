@@ -1,6 +1,6 @@
 package com.example.running.domain.running.repository
 
-import com.example.running.domain.running.entity.QRunningRecord.runningRecord
+import com.example.running.domain.running.entity.QRunningRecord.Companion.runningRecord
 import com.example.running.domain.running.entity.RunningRecord
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.domain.Page

@@ -1,8 +1,8 @@
-package com.example.running.domain.common.service
+package com.example.running.domain.user.service
 
-import com.example.running.domain.common.entity.User
+import com.example.running.domain.user.entity.User
 import com.example.running.domain.common.enums.AuthorityType
-import com.example.running.domain.common.repository.UserRepository
+import com.example.running.domain.user.repository.UserRepository
 import com.example.running.domain.user_auth.service.dto.UserCreationDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -33,4 +33,7 @@ class UserService(
 
         return user
     }
+
+
+//    fun getUserDataDto(userId: Long): UserDataDto {}
 }
