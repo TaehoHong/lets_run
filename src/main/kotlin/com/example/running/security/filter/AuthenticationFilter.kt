@@ -39,7 +39,7 @@ class AuthenticationFilter(
                 SecurityContextHolder.getContext().authentication = getAuthentication(token)
             }
         }
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(request, response)
     }
 
     private fun getAuthentication(token: String): UsernamePasswordAuthenticationToken {

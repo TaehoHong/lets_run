@@ -26,7 +26,7 @@ logging:
 
 token:
   expiration:
-    access: 14400
+    access: 144000
     refresh: 144000
 
 credentials:

@@ -43,6 +43,7 @@ class GoogleOauthController(
                     }
             }?.let {
                 userSignUpService.signup(it)
-            }?: run { throw RuntimeException("Google Token parse Error")}
+            }?.also { log.info { "access token : ${it.accessToken}"} }
+            ?: run { throw RuntimeException("Google Token parse Error")}
     }
 }

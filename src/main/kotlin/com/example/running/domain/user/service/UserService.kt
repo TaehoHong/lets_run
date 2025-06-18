@@ -2,6 +2,7 @@ package com.example.running.domain.user.service
 
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.common.enums.AuthorityType
+import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.repository.UserRepository
 import com.example.running.domain.user_auth.service.dto.UserCreationDto
 import org.springframework.stereotype.Service
@@ -9,8 +10,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UserService(
-    val userAccountService: UserAccountService,
-    val userRepository: UserRepository
+    private val userAccountService: UserAccountService,
+    private val userRepository: UserRepository
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -35,5 +36,7 @@ class UserService(
     }
 
 
-//    fun getUserDataDto(userId: Long): UserDataDto {}
+    fun getUserDataDto(userId: Long): UserDataDto {
+        return userRepository.getUserDataDtoById(userId)
+    }
 }

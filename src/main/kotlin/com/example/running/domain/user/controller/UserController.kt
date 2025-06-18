@@ -1,5 +1,6 @@
 package com.example.running.domain.user.controller
 
+import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.service.UserAccountService
 import com.example.running.domain.user.service.UserService
 import com.example.running.domain.user_auth.controller.dto.UserCreationRequest
@@ -38,9 +39,9 @@ class UserController(
     }
 
     @GetMapping("/me")
-    fun getMe() {
-        authenticateWithUser { userId ->
-
+    fun getMe(): UserDataDto {
+        return authenticateWithUser { userId ->
+            userService.getUserDataDto(userId)
         }
     }
 }
