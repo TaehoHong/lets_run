@@ -10,12 +10,12 @@ import com.example.running.domain.point.entity.QUserPoint.Companion.userPoint
 import com.example.running.domain.user.dto.EquippedItemDto
 import com.example.running.domain.user.dto.UserAccountDataDto
 import com.example.running.domain.user.dto.UserDataDto
+import com.example.running.domain.user.entity.QAccountType.Companion.accountType
 import com.example.running.domain.user.entity.QUser.Companion.user
 import com.example.running.domain.user.entity.QUserAccount.Companion.userAccount
 import com.example.running.domain.user.entity.User
-import com.querydsl.core.QueryFactory
 import com.querydsl.core.group.GroupBy.groupBy
-import com.querydsl.core.types.ExpressionUtils.list
+import com.querydsl.core.group.GroupBy.list
 import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
@@ -36,6 +36,7 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
     override fun getUserDataDtoById(id: Long): UserDataDto {
         return queryFactory.from(user)
             .innerJoin(userAccount).on(userAccount.user.id.eq(user.id).and(userAccount.isEnabled.isTrue).and(userAccount.isDeleted.isFalse))
+            .innerJoin(userAccount.accountType, accountType)
             .innerJoin(avatar).on(avatar.user.id.eq(user.id).and(avatar.isMain.isTrue))
             .innerJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
             .innerJoin(avatarUserItem.userItem, userItem)
@@ -51,17 +52,22 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                     user.authorityType,
                     userPoint.point,
                     list(
-                        UserAccountDataDto::class.java,
-                        userAccount.id,
-                        userAccount.email,
-                        userAccount.accountType
+                        Projections.constructor(
+                                UserAccountDataDto::class.java,
+                                userAccount.id,
+                                userAccount.email,
+                                accountType.name
+                        )
                     ),
                     list(
-                        EquippedItemDto::class.java,
-                        item.id,
-                        item.itemType.id,
-                        item.filePath
-                    )
+                            Projections.constructor(
+                                EquippedItemDto::class.java,
+                                item.id,
+                                item.itemType.id,
+                                item.name,
+                                item.filePath
+                        )
+                    ),
                 )
             ))[0]
     }

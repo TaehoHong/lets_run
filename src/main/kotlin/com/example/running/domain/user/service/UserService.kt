@@ -1,8 +1,8 @@
 package com.example.running.domain.user.service
 
-import com.example.running.domain.user.entity.User
 import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.user.dto.UserDataDto
+import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.repository.UserRepository
 import com.example.running.domain.user_auth.service.dto.UserCreationDto
 import org.springframework.stereotype.Service
@@ -27,9 +27,10 @@ class UserService(
         }
 
         userAccountService.save(
-            user.id,
-            userCreationDto.email,
-            userCreationDto.password
+            userId = user.id,
+            email = userCreationDto.email,
+            password = userCreationDto.password,
+            accountType = userCreationDto.accountType
         )
 
         return user

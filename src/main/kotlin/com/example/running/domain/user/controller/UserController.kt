@@ -3,10 +3,7 @@ package com.example.running.domain.user.controller
 import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.service.UserAccountService
 import com.example.running.domain.user.service.UserService
-import com.example.running.domain.user_auth.controller.dto.UserCreationRequest
-import com.example.running.domain.user_auth.controller.dto.UserResponse
 import com.example.running.domain.user_auth.controller.dto.VerificationEmailDto
-import com.example.running.domain.user_auth.service.dto.UserCreationDto
 import com.example.running.helper.authenticateWithUser
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
@@ -24,13 +21,14 @@ class UserController(
         userAccountService.verifyEmailIsNotExists(emailDto.email)
     }
 
-    @PostMapping
-    fun createUser(@Valid @RequestBody userCreationRequest: UserCreationRequest): UserResponse {
-
-        userAccountService.verifyEmailIsNotExists(userCreationRequest.email)
-        return userService.save(UserCreationDto(userCreationRequest))
-            .let { UserResponse(it.id, it.nickname) }
-    }
+    //자체계정 미제공으로 주석처리
+//    @PostMapping
+//    fun createUser(@Valid @RequestBody userCreationRequest: UserCreationRequest): UserResponse {
+//
+//        userAccountService.verifyEmailIsNotExists(userCreationRequest.email)
+//        return userService.save(UserCreationDto(userCreationRequest))
+//            .let { UserResponse(it.id, it.nickname) }
+//    }
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): String {

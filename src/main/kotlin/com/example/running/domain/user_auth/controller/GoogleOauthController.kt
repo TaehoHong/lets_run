@@ -1,5 +1,6 @@
 package com.example.running.domain.user_auth.controller
 
+import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.user_auth.controller.dto.TokenResponse
 import com.example.running.domain.user_auth.service.GoogleOauthService
 import com.example.running.domain.user_auth.service.UserSignUpService
@@ -42,7 +43,7 @@ class GoogleOauthController(
                         objectMapper.readValue(it, OAuthAccountInfo::class.java)
                     }
             }?.let {
-                userSignUpService.signup(it)
+                userSignUpService.signup(AccountTypeName.GOOGLE, it)
             }?.also { log.info { "access token : ${it.accessToken}"} }
             ?: run { throw RuntimeException("Google Token parse Error")}
     }

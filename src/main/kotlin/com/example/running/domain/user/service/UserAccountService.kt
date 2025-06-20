@@ -1,7 +1,7 @@
 package com.example.running.domain.user.service
 
-import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.common.enums.AccountTypeName
+import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.user.repository.UserAccountRepository
 import com.example.running.utils.alsoIfTrue
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -24,11 +24,11 @@ class UserAccountService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun save(userId: Long, email: String, password: String?) {
+    fun save(userId: Long, email: String, password: String?, accountType: AccountTypeName) {
         userAccountRepository.save(
             UserAccount(
                 userId = userId,
-                accountTypeId = AccountTypeName.SELF.id,
+                accountTypeId = accountType.id,
                 email = email,
                 password = password?.let { passwordEncoder.encode(it) }
             )

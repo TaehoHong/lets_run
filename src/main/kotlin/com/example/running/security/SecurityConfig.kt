@@ -33,7 +33,7 @@ class SecurityConfig(
                 sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
             .authorizeHttpRequests { authorizeHttpRequests ->
-                authorizeHttpRequests.requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
+                authorizeHttpRequests.requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/error").permitAll()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "healthy-check", "active-type").permitAll()
 
