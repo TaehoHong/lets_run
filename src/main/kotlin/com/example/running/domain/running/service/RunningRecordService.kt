@@ -36,7 +36,7 @@ class RunningRecordService(
         val runningRecordDtos = runningRecordRepository.findAllByCursor(userId, request)
             .map { RunningRecordDto(it) }
         val hasNext = runningRecordRepository.existsByCursor(userId, request)
-        val cursor = runningRecordDtos.last().id
+        val cursor = runningRecordDtos.lastOrNull()?.id
 
         return CursorResult(runningRecordDtos, cursor, hasNext)
     }
