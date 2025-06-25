@@ -1,6 +1,7 @@
 package com.example.running.security
 
 import com.example.running.security.filter.AuthenticationFilter
+import com.example.running.security.service.CustomAccessDeniedHandler
 import com.example.running.security.service.JwtAuthenticationEntryPoint
 import com.example.running.security.service.TokenService
 import org.springframework.context.annotation.Bean
@@ -19,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint,
+    private val accessDeniedException: CustomAccessDeniedHandler,
     private val tokenService:TokenService
 ) {
 
@@ -64,6 +66,7 @@ class SecurityConfig(
             }
             .exceptionHandling{ handling ->
                 handling.authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                handling.accessDeniedHandler(accessDeniedException)
             }.logout {
                 logout -> logout.disable()
             }

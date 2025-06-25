@@ -1,6 +1,7 @@
 package com.example.running.domain.running.service.dto
 
 import com.example.running.domain.running.entity.RunningRecord
+import java.time.OffsetDateTime
 
 class RunningRecordDto(
     val id: Long,
@@ -10,6 +11,7 @@ class RunningRecordDto(
     val heartRate: Short,
     val calorie: Int,
     val isUserInput: Boolean,
+    val startDatetime: OffsetDateTime,
 ) {
     constructor(runningRecord: RunningRecord): this(
         id = runningRecord.id,
@@ -18,6 +20,7 @@ class RunningRecordDto(
         cadence = runningRecord.cadence,
         heartRate = runningRecord.heartRate,
         calorie = runningRecord.calorie,
-        isUserInput = runningRecord.isUserInput
+        isUserInput = runningRecord.isUserInput,
+        startDatetime = runningRecord.startDatetime,
     )
 }

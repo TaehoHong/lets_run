@@ -1,14 +1,15 @@
 package com.example.running.domain.running.controller
 
-import com.example.running.domain.common.dto.PageResult
+import com.example.running.domain.common.dto.CursorResult
 import com.example.running.domain.running.controller.dto.EndRecordRequest
-import com.example.running.domain.running.controller.dto.RunningRecordSearch
+import com.example.running.domain.running.controller.dto.RunningRecordSearchRequest
+import com.example.running.domain.running.controller.dto.RunningRecordSearchResponse
 import com.example.running.domain.running.controller.dto.StartRunningResponse
 import com.example.running.domain.running.service.RunningRecordService
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
+import com.example.running.helper.authenticateWithUser
 import com.example.running.utils.JwtPayloadParser
 import com.example.running.utils.convertToOffsetDateTime
-import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.*
 
 
@@ -26,11 +27,13 @@ class RunningRecordController(
     }
 
     @GetMapping
-    fun search(pageable: Pageable): PageResult<RunningRecordSearch.Response> {
-        return runningRecordService.getDtoPage(JwtPayloadParser.getUserId(), pageable)
-            .let {
-                PageResult.of(it) { record -> RunningRecordSearch.Response(record) }
-            }
+    fun search(@ModelAttribute request: RunningRecordSearchRequest): CursorResult<RunningRecordSearchResponse> {
+        return authenticateWithUser { userId ->
+            runningRecordService.getDtoCursorPage(userId, request)
+                .let {
+                    it.of { recordDto -> RunningRecordSearchResponse(recordDto) }
+                }
+        }
     }
 
     @PutMapping("/{id}/end")

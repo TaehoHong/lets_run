@@ -31,7 +31,6 @@ class JwtAuthenticationEntryPoint(
         }
 
 
-
         response.contentType = "application/json;charset=UTF-8"
         response.status = HttpServletResponse.SC_UNAUTHORIZED
         response.writer.write(objectMapper.writeValueAsString(ErrorResponse(message)))

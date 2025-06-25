@@ -1,14 +1,11 @@
 package com.example.running.domain.point.controller
 
-import com.example.running.domain.common.dto.PageResult
 import com.example.running.domain.point.controller.dto.UserPointHistoryRequest
 import com.example.running.domain.point.controller.dto.UserPointHistoryResponse
 import com.example.running.domain.point.controller.dto.UserPointResponse
-import com.example.running.domain.point.entity.UserPointHistory
 import com.example.running.domain.point.service.UserPointHistoryService
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.utils.JwtPayloadParser
-import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController

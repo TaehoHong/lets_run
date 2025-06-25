@@ -17,10 +17,10 @@ class PageResult<T>(
 
 
 class PageInfo (
-    val pageNumber: Int,
-    val pageSize: Int,
-    val totalElements: Int,
-    val totalPage: Int
+    val pageNumber: Int?,
+    val pageSize: Int?,
+    val totalElements: Int?,
+    val totalPage: Int?
 ) {
     constructor(page: Page<*>): this(
         pageNumber = page.number,

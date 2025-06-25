@@ -1,7 +1,7 @@
 package com.example.running.domain.running.service
 
 import com.example.running.domain.running.enums.RunningStatisticType
-import com.example.running.domain.running.repository.RunningRecordQueryRepository
+import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.running.service.dto.RunningStatistics
 import org.springframework.stereotype.Service
 import java.time.DayOfWeek
@@ -10,7 +10,7 @@ import java.time.ZoneId
 
 @Service
 class RunningStatisticService(
-    private val runningRecordQueryRepository: RunningRecordQueryRepository
+    private val runningRecordRepository: RunningRecordRepository
 ) {
 
     fun getStatistics(userId: Long, zoneId: ZoneId, statisticType: RunningStatisticType): RunningStatistics {
@@ -18,7 +18,7 @@ class RunningStatisticService(
         val now = OffsetDateTime.now(zoneId)
 
         return RunningStatistics(
-            runningRecordQueryRepository.getAllByUserIdAndEndDatetimeBetween(
+            runningRecordRepository.getAllByUserIdAndEndDatetimeBetween(
                 userId,
                 getStartDateTime(now, statisticType),
                 now

@@ -104,6 +104,7 @@ class TokenService {
                 return true
 
             }.onFailure { exception ->
+
                 when(exception) {
                     is MalformedJwtException -> {
                         log.error {"JWT token is malformed"}
@@ -118,6 +119,7 @@ class TokenService {
                         ErrorCode.TOKEN_IS_EXPIRED
                     }
                     else -> {
+                        log.error("error: {}", exception.message)
                         ErrorCode.UNAUTHORIZED
                     }
                 }.run {
