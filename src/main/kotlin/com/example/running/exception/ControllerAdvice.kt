@@ -27,4 +27,23 @@ class ControllerAdvice {
             HttpStatus.BAD_REQUEST
         )
     }
+
+    @ExceptionHandler(RuntimeException::class)
+    fun methodRuntimeException(ex: RuntimeException): ResponseEntity<ErrorResponse> {
+
+        return ResponseEntity(
+            ErrorResponse(ex.message!!),
+            HttpStatus.INTERNAL_SERVER_ERROR
+        )
+    }
+
+
+    @ExceptionHandler(Exception::class)
+    fun methodException(ex: Exception): ResponseEntity<ErrorResponse> {
+
+        return ResponseEntity(
+            ErrorResponse(ex.message!!),
+            HttpStatus.INTERNAL_SERVER_ERROR
+        )
+    }
 }
