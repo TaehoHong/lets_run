@@ -1,12 +1,15 @@
 package com.example.running.domain.point.controller
 
+import com.example.running.domain.common.dto.CursorResult
 import com.example.running.domain.point.controller.dto.UserPointHistoryRequest
 import com.example.running.domain.point.controller.dto.UserPointHistoryResponse
 import com.example.running.domain.point.controller.dto.UserPointResponse
 import com.example.running.domain.point.service.UserPointHistoryService
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.utils.JwtPayloadParser
+import com.example.running.utils.convertToOffsetDateTime
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -24,13 +27,15 @@ class UserPointController(
     }
 
     @GetMapping("/histories")
-    fun getPointHistory(userPointHistoryRequest: UserPointHistoryRequest): List<UserPointHistoryResponse> {
-        return userPointHistoryService.findAll(
+    fun getPointHistory(@ModelAttribute userPointHistoryRequest: UserPointHistoryRequest): CursorResult<UserPointHistoryResponse> {
+        return userPointHistoryService.search(
             userId = JwtPayloadParser.getUserId(),
-            id = userPointHistoryRequest.cursor,
-            size = userPointHistoryRequest.size
-        ).map {
-            UserPointHistoryResponse(it.point, it.pointType, it.createdDatetime)
+            isEarned = userPointHistoryRequest.isEarned,
+            cursor = userPointHistoryRequest.cursor,
+            size = userPointHistoryRequest.size,
+            startCreatedDatetime = userPointHistoryRequest.startCreatedTimestamp?.let { convertToOffsetDateTime(it) }
+        ).of {
+            UserPointHistoryResponse(it.id, it.point, it.pointType, it.createdDatetime)
         }
     }
 }

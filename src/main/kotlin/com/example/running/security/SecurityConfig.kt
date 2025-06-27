@@ -59,8 +59,9 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running").authenticated()
-
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/statistics").authenticated()
+
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points/histories").authenticated()
 
                 authorizeHttpRequests.anyRequest().denyAll()
             }

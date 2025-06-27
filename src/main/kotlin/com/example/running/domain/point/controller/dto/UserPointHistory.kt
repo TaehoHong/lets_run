@@ -6,17 +6,21 @@ import java.time.OffsetDateTime
 
 class UserPointHistoryRequest(
     val cursor: Long? = null,
+    val isEarned: Boolean? = null,
+    val startCreatedTimestamp: Long? = null,
     val size: Int = 30
 )
 
 class UserPointHistoryResponse(
+    val id: Long,
     val point: Int,
     val pointType: String,
-    val timestamp: Long
+    val createdTimestamp: Long
 ) {
-    constructor(point: Int, pointType: PointType, createDateTime: OffsetDateTime): this(
+    constructor(id: Long, point: Int, pointType: PointType, createDateTime: OffsetDateTime): this(
+        id = id,
         point = point,
         pointType = pointType.name,
-        timestamp = createDateTime.toEpochSecond()
+        createdTimestamp = createDateTime.toEpochSecond()
     )
 }
