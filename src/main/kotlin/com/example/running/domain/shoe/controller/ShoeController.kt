@@ -1,15 +1,12 @@
 package com.example.running.domain.shoe.controller
 
+import com.example.running.domain.common.dto.CursorResult
 import com.example.running.domain.shoe.controller.dto.ShoeCreationRequest
 import com.example.running.domain.shoe.controller.dto.ShoeResponse
-import com.example.running.domain.shoe.entity.Shoe
 import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.domain.shoe.service.dto.ShoeCreationDto
 import com.example.running.helper.authenticateWithUser
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RequestMapping("/api/v1/shoes")
 @RestController
@@ -28,6 +25,18 @@ class ShoeController(private val shoeService: ShoeService) {
                     isMain = shoeCreationRequest.isMain
                 )
             ).let { ShoeResponse(it) }
+        }
+    }
+
+    @GetMapping
+    fun getAll(@RequestParam(required = false) cursor: Long?,
+               @RequestParam isEnabled: Boolean,
+               @RequestParam(defaultValue = "10") size: Int
+    ): CursorResult<ShoeResponse> {
+
+        return authenticateWithUser { userId ->
+            shoeService.getShoeDtoCursor(userId, isEnabled, cursor, size)
+                .of { ShoeResponse(it) }
         }
     }
 }
