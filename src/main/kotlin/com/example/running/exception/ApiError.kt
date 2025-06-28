@@ -1,7 +1,9 @@
 package com.example.running.exception
 
-enum class ApiError(val message: String) {
+import org.springframework.http.HttpStatus
 
-    BAD_REQUEST_FIELD_VALID_ERROR("입력값을 확인해주세요."),
-    NOT_FOUND_USER_ACCOUNT("유저 계정이 존재하지 않습니다.")
+enum class ApiError(val status: HttpStatus, val message: String) {
+
+    BAD_REQUEST_FIELD_VALID_ERROR(HttpStatus.BAD_REQUEST, "입력값을 확인해주세요."),
+    NOT_FOUND_USER_ACCOUNT(HttpStatus.NOT_FOUND, "유저 계정이 존재하지 않습니다.")
 }

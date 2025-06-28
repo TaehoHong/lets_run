@@ -14,7 +14,7 @@ class ControllerAdvice {
     private val log = KotlinLogging.logger {}
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun methodArgumentNotValidException(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+    fun handleMethodArgumentNotValidException(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
         val errors = mutableMapOf<String, String>()
         ex.bindingResult.allErrors.forEach { error ->
             val fieldName = (error as FieldError).field
@@ -28,8 +28,17 @@ class ControllerAdvice {
         )
     }
 
+    @ExceptionHandler(ApiException::class)
+    fun handleApiException(ex: ApiException): ResponseEntity<ErrorResponse> {
+
+        return ResponseEntity(
+            ErrorResponse(ex.message!!),
+            ex.status
+        )
+    }
+
     @ExceptionHandler(RuntimeException::class)
-    fun methodRuntimeException(ex: RuntimeException): ResponseEntity<ErrorResponse> {
+    fun handleRuntimeException(ex: RuntimeException): ResponseEntity<ErrorResponse> {
 
         return ResponseEntity(
             ErrorResponse(ex.message!!),
@@ -39,7 +48,7 @@ class ControllerAdvice {
 
 
     @ExceptionHandler(Exception::class)
-    fun methodException(ex: Exception): ResponseEntity<ErrorResponse> {
+    fun handleException(ex: Exception): ResponseEntity<ErrorResponse> {
 
         return ResponseEntity(
             ErrorResponse(ex.message!!),
