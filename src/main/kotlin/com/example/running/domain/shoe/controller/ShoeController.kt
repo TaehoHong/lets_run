@@ -2,9 +2,11 @@ package com.example.running.domain.shoe.controller
 
 import com.example.running.domain.common.dto.CursorResult
 import com.example.running.domain.shoe.controller.dto.ShoeCreationRequest
+import com.example.running.domain.shoe.controller.dto.ShoePatchRequest
 import com.example.running.domain.shoe.controller.dto.ShoeResponse
 import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.domain.shoe.service.dto.ShoeCreationDto
+import com.example.running.domain.shoe.service.dto.ShoePatchDto
 import com.example.running.helper.authenticateWithUser
 import org.springframework.web.bind.annotation.*
 
@@ -37,6 +39,22 @@ class ShoeController(private val shoeService: ShoeService) {
         return authenticateWithUser { userId ->
             shoeService.getShoeDtoCursor(userId, isEnabled, cursor, size)
                 .of { ShoeResponse(it) }
+        }
+    }
+
+    @PatchMapping("/{id}")
+    fun patch(@PathVariable id: Long, @RequestBody shoePatchRequest: ShoePatchRequest): ShoeResponse {
+        return authenticateWithUser { userId ->
+            shoeService.patch(userId, id,
+                ShoePatchDto(
+                    brand = shoePatchRequest.brand,
+                    model = shoePatchRequest.model,
+                    targetDistance = shoePatchRequest.targetDistance,
+                    isMain = shoePatchRequest.isMain,
+                    isEnabled = shoePatchRequest.isEnabled,
+                    isDeleted = shoePatchRequest.isDeleted
+                )
+            ).let { ShoeResponse(it) }
         }
     }
 }
