@@ -39,6 +39,7 @@ class ControllerAdvice {
 
     @ExceptionHandler(RuntimeException::class)
     fun handleRuntimeException(ex: RuntimeException): ResponseEntity<ErrorResponse> {
+        ex.printStackTrace()
 
         return ResponseEntity(
             ErrorResponse(ex.message!!),

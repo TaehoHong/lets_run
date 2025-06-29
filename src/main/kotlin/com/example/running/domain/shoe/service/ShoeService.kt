@@ -29,7 +29,7 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
         }.let { ShoeDto(it) }
     }
 
-    fun getShoeDtoCursor(userId: Long, isEnabled: Boolean, cursor: Long?, size: Int): CursorResult<ShoeDto> {
+    fun getShoeDtoCursor(userId: Long, isEnabled: Boolean?, cursor: Long?, size: Int): CursorResult<ShoeDto> {
 
         val content = shoeRepository.findAll(userId, isEnabled, cursor, size)
         val cursor = content.lastOrNull()?.id

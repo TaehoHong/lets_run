@@ -63,6 +63,11 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points/histories").authenticated()
 
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/shoes").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/shoes").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/shoes/*").authenticated()
+
+
                 authorizeHttpRequests.anyRequest().denyAll()
             }
             .exceptionHandling{ handling ->

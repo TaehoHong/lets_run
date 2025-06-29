@@ -32,7 +32,7 @@ class ShoeController(private val shoeService: ShoeService) {
 
     @GetMapping
     fun getAll(@RequestParam(required = false) cursor: Long?,
-               @RequestParam isEnabled: Boolean,
+               @RequestParam(required = false) isEnabled: Boolean?,
                @RequestParam(defaultValue = "10") size: Int
     ): CursorResult<ShoeResponse> {
 
