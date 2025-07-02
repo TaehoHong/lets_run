@@ -1,6 +1,7 @@
 package com.example.running.domain.running.controller
 
 import com.example.running.domain.common.dto.CursorResult
+import com.example.running.domain.running.controller.dto.CreationRunningRecord
 import com.example.running.domain.running.controller.dto.EndRecordRequest
 import com.example.running.domain.running.controller.dto.RunningRecordSearchRequest
 import com.example.running.domain.running.controller.dto.RunningRecordSearchResponse
@@ -19,11 +20,12 @@ class RunningRecordController(
     private val runningRecordService: RunningRecordService
 ){
 
-
     @PostMapping
-    fun startRecord(): StartRunningResponse {
-        return runningRecordService.startRecord(JwtPayloadParser.getUserId())
-            .let { StartRunningResponse(it.id) }
+    fun startRecord(@RequestBody creationRunningRecord: CreationRunningRecord): StartRunningResponse {
+        return authenticateWithUser { userId ->
+            runningRecordService.startRecord(userId, creationRunningRecord.getStartDatetime())
+                .let { StartRunningResponse(it.id) }
+        }
     }
 
     @GetMapping

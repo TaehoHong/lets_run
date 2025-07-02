@@ -9,6 +9,8 @@ import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.domain.running.service.dto.StartRunningDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
 
 @Service
 class RunningRecordService(
@@ -16,12 +18,10 @@ class RunningRecordService(
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun startRecord(userId: Long): StartRunningDto {
-
+    fun startRecord(userId: Long, startDateTime: OffsetDateTime): StartRunningDto {
         endRecord(userId)
-
         return runningRecordRepository.save(
-            RunningRecord(userId = userId)
+            RunningRecord(userId = userId, startDateTime = startDateTime)
         ).let {
             StartRunningDto(it.id)
         }

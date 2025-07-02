@@ -1,11 +1,17 @@
 package com.example.running.domain.running.controller.dto
 
+import jakarta.validation.Valid
 import jakarta.validation.constraints.Min
 import org.jetbrains.annotations.NotNull
 
 
 class PostRequest(
+    @Valid
+    val items: List<CreationRunningRecordItemDto>
+)
 
+
+class CreationRunningRecordItemDto (
     @NotNull
     @Min(0)
     val distance: Int,

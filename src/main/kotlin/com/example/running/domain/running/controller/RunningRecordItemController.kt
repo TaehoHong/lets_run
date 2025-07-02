@@ -7,6 +7,7 @@ import com.example.running.utils.convertToOffsetDateTime
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -19,19 +20,21 @@ class RunningRecordItemController(
     
     @PostMapping("/{id}/items")
     fun recordItem(@PathVariable(name = "id") runningRecordId: Long,
-                   @Valid postRequest: PostRequest
+                   @Valid @RequestBody postRequest: PostRequest
     ) {
-        RunningRecordItemDto(
-            distance = postRequest.distance,
-            durationSec = postRequest.durationSec,
-            cadence = postRequest.cadence,
-            heartRate = postRequest.heartRate,
-            minHeartRate = postRequest.minHeartRate,
-            maxHeartRate = postRequest.maxHeartRate,
-            orderIndex = postRequest.orderIndex,
-            startDateTime = convertToOffsetDateTime(postRequest.startTimeStamp),
-            endDateTime = convertToOffsetDateTime(postRequest.endTimeStamp),
-        ).let {
+        postRequest.items.map { item ->
+            RunningRecordItemDto(
+                distance = item.distance,
+                durationSec = item.durationSec,
+                cadence = item.cadence,
+                heartRate = item.heartRate,
+                minHeartRate = item.minHeartRate,
+                maxHeartRate = item.maxHeartRate,
+                orderIndex = item.orderIndex,
+                startDateTime = convertToOffsetDateTime(item.startTimeStamp),
+                endDateTime = convertToOffsetDateTime(item.endTimeStamp),
+            )
+        }.let {
             runningRecordItemService.save(runningRecordId, it)
         }
     }

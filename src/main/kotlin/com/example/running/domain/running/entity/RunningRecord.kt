@@ -4,7 +4,9 @@ import com.example.running.domain.common.entity.CreatedDatetime
 import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.OffsetTime
 
 @Entity
 class RunningRecord(
@@ -51,8 +53,14 @@ class RunningRecord(
 
 ): CreatedDatetime(){
 
-    constructor(userId: Long): this(
-        user = User(id = userId)
+    constructor(id: Long): this(
+        id = id,
+        user = User(id = 0)
+    )
+
+    constructor(userId: Long, startDateTime: OffsetDateTime): this(
+        user = User(id = userId),
+        startDatetime = startDateTime,
     )
 
     fun endRecord(distance: Long, durationSec: Long, cadence: Short, heartRate: Short, calorie: Int, endDatetime: OffsetDateTime){

@@ -1,4 +1,4 @@
-package com.example.running.enums
+package com.example.running.exception
 
 import org.springframework.http.HttpStatus
 

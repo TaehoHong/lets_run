@@ -8,10 +8,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.OffsetDateTime
 
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener::class)
 open class CreatedDatetime {
 
-    @CreatedDate
     @Column(name = "created_datetime", nullable = false, columnDefinition = "DATETIME")
     val createdDatetime: OffsetDateTime = OffsetDateTime.now()
 }

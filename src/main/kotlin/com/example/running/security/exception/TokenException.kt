@@ -1,6 +1,6 @@
 package com.example.running.security.exception
 
-import com.example.running.enums.ErrorCode
+import com.example.running.exception.ErrorCode
 import org.springframework.security.core.AuthenticationException
 
 data class TokenException(

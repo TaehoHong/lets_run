@@ -28,7 +28,7 @@ class SecurityConfig(
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         return http
-            .cors { it.disable() }
+            .cors { corsConfigurer -> corsConfigurer.configurationSource(corsConfigurationSource()) }
             .csrf { it.disable() }
             .addFilterBefore(AuthenticationFilter(tokenService), UsernamePasswordAuthenticationFilter::class.java)
             .sessionManagement { sessionManagement ->
@@ -58,15 +58,17 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/user-items").permitAll()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PUT, "/api/v1/running/*/end").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/statistics").authenticated()
+
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/*/items").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points/histories").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/shoes").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/shoes").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/shoes/*").authenticated()
-
 
                 authorizeHttpRequests.anyRequest().denyAll()
             }
@@ -92,7 +94,5 @@ class SecurityConfig(
                 corsConfigurationSource.registerCorsConfiguration("/**", it)
                 return corsConfigurationSource
             }
-
-
     }
 }

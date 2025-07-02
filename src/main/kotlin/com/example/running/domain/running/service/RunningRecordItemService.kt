@@ -13,21 +13,23 @@ class RunningRecordItemService(
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun save(runningRecordId: Long, runningRecordItemDto: RunningRecordItemDto) {
-     
-        RunningRecordItem(
-            runningRecord = RunningRecord(runningRecordId),
-            distance = runningRecordItemDto.distance,
-            durationSec = runningRecordItemDto.durationSec,
-            cadence = runningRecordItemDto.cadence,
-            heartRate = runningRecordItemDto.heartRate,
-            minHeartRate = runningRecordItemDto.minHeartRate,
-            maxHeartRate = runningRecordItemDto.maxHeartRate,
-            orderIndex = runningRecordItemDto.orderIndex,
-            startDatetime = runningRecordItemDto.startDateTime,
-            endDatetime = runningRecordItemDto.endDateTime,
-        ).let {
-            runningRecordItemRepository.save(it)
+    fun save(runningRecordId: Long, runningRecordItemDtos: List<RunningRecordItemDto>) {
+
+        runningRecordItemDtos.map { item ->
+            RunningRecordItem(
+                runningRecord = RunningRecord(id = runningRecordId),
+                distance = item.distance,
+                durationSec = item.durationSec,
+                cadence = item.cadence,
+                heartRate = item.heartRate,
+                minHeartRate = item.minHeartRate,
+                maxHeartRate = item.maxHeartRate,
+                orderIndex = item.orderIndex,
+                startDatetime = item.startDateTime,
+                endDatetime = item.endDateTime,
+            )
+        }.let {
+            runningRecordItemRepository.saveInBatch(it)
         }
     }
 }
