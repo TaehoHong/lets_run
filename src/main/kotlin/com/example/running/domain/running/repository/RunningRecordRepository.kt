@@ -20,7 +20,7 @@ interface QRunningRecordRepository {
     fun updateIsEndById(isEnd: Boolean, id: Long)
     fun getAllByUserIdAndEndDatetimeBetween(userId: Long, start: OffsetDateTime, end: OffsetDateTime): List<RunningRecord>
     fun findAllByCursor(userId: Long, request: RunningRecordSearchRequest): List<RunningRecord>
-    fun existsByCursor(userId: Long, request: RunningRecordSearchRequest): Boolean
+    fun existsByCursor(userId: Long, cursor: Long?, request: RunningRecordSearchRequest): Boolean
 
 }
 
@@ -51,7 +51,7 @@ class QRunningRecordRepositoryImpl(
 
     override fun findAllByCursor(userId: Long, request: RunningRecordSearchRequest): List<RunningRecord> {
         return queryFactory.selectFrom(runningRecord)
-            .where(getBooleanBuilder(userId, request))
+            .where(getBooleanBuilder(userId, request.cursor, request))
             .orderBy(runningRecord.id.desc())
             .limit(request.size.toLong())
             .fetch()
@@ -59,24 +59,25 @@ class QRunningRecordRepositoryImpl(
 
     override fun existsByCursor(
         userId: Long,
+        cursor: Long?,
         request: RunningRecordSearchRequest
     ): Boolean {
         return queryFactory.select(Expressions.TRUE)
             .from(runningRecord)
-            .where(getBooleanBuilder(userId, request))
+            .where(getBooleanBuilder(userId, cursor, request))
             .orderBy(runningRecord.id.desc())
             .fetchFirst()?:false
     }
 
-    private fun getBooleanBuilder(userId: Long, request: RunningRecordSearchRequest): BooleanBuilder {
+    private fun getBooleanBuilder(userId: Long, cursor: Long?, request: RunningRecordSearchRequest): BooleanBuilder {
         val booleanBuilder = BooleanBuilder()
             .andAnyOf(
             runningRecord.user.id.eq(userId),
                 runningRecord.isStatisticIncluded.isTrue,
         )
 
-        if(request.cursor != null) {
-            booleanBuilder.and(runningRecord.id.lt(request.cursor))
+        if(cursor != null) {
+            booleanBuilder.and(runningRecord.id.lt(cursor))
         }
 
         if(request.getStartDateTime() != null) {

@@ -35,8 +35,9 @@ class RunningRecordService(
     fun getDtoCursorPage(userId: Long, request: RunningRecordSearchRequest): CursorResult<RunningRecordDto>  {
         val runningRecordDtos = runningRecordRepository.findAllByCursor(userId, request)
             .map { RunningRecordDto(it) }
-        val hasNext = runningRecordRepository.existsByCursor(userId, request)
+
         val cursor = runningRecordDtos.lastOrNull()?.id
+        val hasNext = runningRecordRepository.existsByCursor(userId, cursor, request)
 
         return CursorResult(runningRecordDtos, cursor, hasNext)
     }
