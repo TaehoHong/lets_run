@@ -2,7 +2,7 @@ package com.example.running.security.service
 
 import com.example.running.config.properties.JwtProperties
 import com.example.running.domain.common.enums.AuthorityType
-import com.example.running.domain.user_auth.controller.dto.TokenResponse
+import com.example.running.domain.auth.controller.dto.TokenResponse
 import com.example.running.exception.ErrorCode
 import com.example.running.security.exception.TokenException
 import io.github.oshai.kotlinlogging.KotlinLogging

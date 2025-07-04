@@ -1,10 +1,10 @@
-package com.example.running.domain.user_auth.controller
+package com.example.running.domain.auth.controller
 
 import com.example.running.domain.common.enums.AccountTypeName
-import com.example.running.domain.user_auth.controller.dto.TokenResponse
-import com.example.running.domain.user_auth.service.GoogleOauthService
-import com.example.running.domain.user_auth.service.UserSignUpService
-import com.example.running.domain.user_auth.service.dto.OAuthAccountInfo
+import com.example.running.domain.auth.controller.dto.TokenResponse
+import com.example.running.domain.auth.service.GoogleOauthService
+import com.example.running.domain.auth.service.UserSignUpService
+import com.example.running.domain.auth.service.dto.OAuthAccountInfo
 import com.example.running.security.service.TokenService
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging

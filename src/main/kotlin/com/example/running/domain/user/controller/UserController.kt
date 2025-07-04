@@ -3,7 +3,7 @@ package com.example.running.domain.user.controller
 import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.service.UserAccountService
 import com.example.running.domain.user.service.UserService
-import com.example.running.domain.user_auth.controller.dto.VerificationEmailDto
+import com.example.running.domain.auth.controller.dto.VerificationEmailDto
 import com.example.running.helper.authenticateWithUser
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*

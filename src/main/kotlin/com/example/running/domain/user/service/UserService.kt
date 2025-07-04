@@ -4,7 +4,7 @@ import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.repository.UserRepository
-import com.example.running.domain.user_auth.service.dto.UserCreationDto
+import com.example.running.domain.auth.service.dto.UserCreationDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

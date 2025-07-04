@@ -1,4 +1,4 @@
-package com.example.running.domain.user_auth.service.dto
+package com.example.running.domain.auth.service.dto
 
 import com.example.running.domain.common.enums.AccountTypeName
 

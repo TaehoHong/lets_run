@@ -1,4 +1,4 @@
-package com.example.running.domain.user_auth.controller.dto
+package com.example.running.domain.auth.controller.dto
 
 class TokenResponse(
     val userId: Long,

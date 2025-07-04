@@ -1,4 +1,4 @@
-package com.example.running.domain.user_auth.service.dto
+package com.example.running.domain.auth.service.dto
 
 data class OAuthAccountInfo(
     val email: String,
