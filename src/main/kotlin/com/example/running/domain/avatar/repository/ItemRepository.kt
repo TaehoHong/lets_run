@@ -8,30 +8,27 @@ import com.example.running.domain.avatar.entity.QUserItem.Companion.userItem
 import com.example.running.domain.avatar.service.dto.ItemDto
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.Projections
+import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.impl.JPAQueryFactory
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
-interface ItemRepository: JpaRepository<Item, Long> {
+interface ItemRepository: JpaRepository<Item, Long>, QItemRepository {
+}
+
+
+interface QItemRepository {
+    fun findAllItemDtos(userId: Long, cursor: Long?, itemSearchRequest: ItemSearchRequest): List<ItemDto>
+    fun hasNext(userId: Long, cursor: Long?, itemSearchRequest: ItemSearchRequest): Boolean
+    fun findAllItemTypeIdByIdIn(ids: List<Long>): List<Short>
 }
 
 @Repository
-class ItemQueryRepository(
+class QItemRepositoryImpl(
     private val queryFactory: JPAQueryFactory
-) {
+) : QItemRepository {
 
-    fun findItemDtoPage(userId: Long, itemSearchRequest: ItemSearchRequest, pageable: Pageable): Page<ItemDto> {
-        return PageImpl(
-            findAllItems(userId, itemSearchRequest, pageable),
-            pageable,
-            countAllItems(userId, itemSearchRequest)
-        )
-    }
-
-    private fun findAllItems(userId: Long, itemSearchRequest: ItemSearchRequest, pageable: Pageable): List<ItemDto> {
+    override fun findAllItemDtos(userId: Long, cursor: Long?, itemSearchRequest: ItemSearchRequest): List<ItemDto> {
 
         return queryFactory
             .select(
@@ -43,25 +40,21 @@ class ItemQueryRepository(
             ).from(item)
             .innerJoin(item.itemType, itemType).fetchJoin()
             .leftJoin(userItem).on(userItem.item.id.eq(item.id).and(userItem.user.id.eq(userId)))
-            .where(getWhereClause(itemSearchRequest))
-            .offset(pageable.offset)
-            .limit(pageable.pageSize.toLong())
+            .where(getWhereClause(cursor, itemSearchRequest))
             .fetch()
     }
 
-
-
-    private fun countAllItems(userId: Long, itemSearchRequest: ItemSearchRequest): Long {
+    override fun hasNext(userId: Long, cursor: Long?, itemSearchRequest: ItemSearchRequest): Boolean {
         return queryFactory
-            .select(item.count())
+            .select(Expressions.TRUE)
             .from(item)
             .innerJoin(item.itemType, itemType)
             .leftJoin(userItem).on(userItem.item.id.eq(item.id).and(userItem.user.id.eq(userId)))
-            .where(getWhereClause(itemSearchRequest))
-            .fetchFirst()?: 0
+            .where(getWhereClause(cursor, itemSearchRequest))
+            .fetchFirst()?: false
     }
 
-    private fun getWhereClause(itemSearchRequest: ItemSearchRequest): BooleanBuilder {
+    private fun getWhereClause(cursor: Long?, itemSearchRequest: ItemSearchRequest): BooleanBuilder {
         return BooleanBuilder().apply {
 
             if(itemSearchRequest.excludeMyItems) {
@@ -71,10 +64,14 @@ class ItemQueryRepository(
             itemSearchRequest.itemTypeId?.let {
                 this.and(item.itemType.id.eq(it))
             }
+
+            cursor?.also {
+                this.and(item.id.gt(it))
+            }
         }
     }
 
-    fun findAllItemTypeIdByIdIn(ids: List<Long>): List<Short> {
+    override fun findAllItemTypeIdByIdIn(ids: List<Long>): List<Short> {
         return queryFactory.select(item.itemType.id)
             .from(item)
             .where(item.id.`in`(ids))

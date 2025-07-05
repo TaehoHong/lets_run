@@ -2,28 +2,28 @@ package com.example.running.domain.avatar.service
 
 import com.example.running.domain.avatar.controller.dto.ItemSearchRequest
 import com.example.running.domain.avatar.entity.Item
-import com.example.running.domain.avatar.repository.ItemQueryRepository
 import com.example.running.domain.avatar.repository.ItemRepository
 import com.example.running.domain.avatar.service.dto.ItemDto
-import com.example.running.utils.JwtPayloadParser
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
+import com.example.running.domain.common.dto.CursorResult
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class ItemService(
-    private val itemRepository: ItemRepository,
-    private val itemQueryRepository: ItemQueryRepository
+    private val itemRepository: ItemRepository
 ) {
 
     @Transactional(readOnly = true)
-    fun getItemDtoPage(itemSearchRequest: ItemSearchRequest, pageable: Pageable): Page<ItemDto> {
-        return itemQueryRepository.findItemDtoPage(
-            JwtPayloadParser.getUserId(),
-            itemSearchRequest,
-            pageable
-        )
+    fun getItemDtoPage(userId: Long, itemSearchRequest: ItemSearchRequest): CursorResult<ItemDto> {
+        val content = itemRepository.findAllItemDtos(userId, itemSearchRequest.cursor, itemSearchRequest)
+
+        val cursor = content.lastOrNull()?.id
+
+        val hasNext = itemRepository.hasNext(userId, cursor, itemSearchRequest)
+
+
+        return CursorResult(content, cursor, hasNext)
+
     }
 
     @Transactional(readOnly = true)
@@ -39,6 +39,6 @@ class ItemService(
 
     @Transactional(readOnly = true)
     fun getAllItemTypeId(ids: List<Long>): List<Short> {
-        return itemQueryRepository.findAllItemTypeIdByIdIn(ids)
+        return itemRepository.findAllItemTypeIdByIdIn(ids)
     }
 }

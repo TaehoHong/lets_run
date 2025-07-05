@@ -38,10 +38,10 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
             .innerJoin(userAccount).on(userAccount.user.id.eq(user.id).and(userAccount.isEnabled.isTrue).and(userAccount.isDeleted.isFalse))
             .innerJoin(userAccount.accountType, accountType)
             .innerJoin(avatar).on(avatar.user.id.eq(user.id).and(avatar.isMain.isTrue))
-            .innerJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
-            .innerJoin(avatarUserItem.userItem, userItem)
-            .innerJoin(userItem.item, item)
-            .innerJoin(item.itemType, itemType)
+            .leftJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
+            .leftJoin(avatarUserItem.userItem, userItem)
+            .leftJoin(userItem.item, item)
+            .leftJoin(item.itemType, itemType)
             .innerJoin(userPoint).on(userPoint.user.id.eq(user.id))
             .where(user.id.eq(id).and(user.isEnabled.isTrue).and(user.isDeleted.isFalse))
             .transform(groupBy(user.id).list(
@@ -66,7 +66,7 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                                 item.itemType.id,
                                 item.name,
                                 item.filePath
-                        )
+                        ).skipNulls()
                     ),
                 )
             ))[0]
