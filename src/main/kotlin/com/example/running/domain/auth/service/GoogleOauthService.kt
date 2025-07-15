@@ -36,11 +36,10 @@ class GoogleOauthService(private val objectMapper: ObjectMapper) {
                 it["grant_type"] = this.grantType
                 it["code"] = code //URLEncoder().encode(code, Charset.forName("UTF-8"))
             }.runCatching {
-                val postRequest = WebClientUtils.postRequest(
+                WebClientUtils.postRequest(
                     url = tokenUrl!!,
                     queryParams = this
                 )
-                postRequest
             }.onSuccess {
                 log.debug { "google token response : $it" }
             }.onFailure { exception ->
