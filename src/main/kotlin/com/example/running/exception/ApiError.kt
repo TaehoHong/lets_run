@@ -14,4 +14,9 @@ enum class ApiError(val status: HttpStatus, val message: String) {
 
     // Shoe
     NOT_FOUND_SHOE(HttpStatus.NOT_FOUND, "Not Found Shoe"),
+
+
+
+    // Account
+    INVALID_REQUEST_ACCOUNT_TYPE(HttpStatus.BAD_REQUEST, "Bad Request AccountType"),
 }

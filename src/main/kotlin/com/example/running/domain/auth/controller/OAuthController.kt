@@ -2,7 +2,7 @@ package com.example.running.domain.auth.controller
 
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.auth.controller.dto.TokenResponse
-import com.example.running.domain.auth.service.GoogleOauthService
+import com.example.running.domain.auth.service.OauthService
 import com.example.running.domain.auth.service.UserSignUpService
 import com.example.running.domain.auth.service.dto.OAuthAccountInfo
 import com.example.running.security.service.TokenService
@@ -10,17 +10,18 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 //http://localhost:8080/login/oauth2/code/google?code=4%2F0AQlEd8yywxIkfIjJ2lriidY4mX1sD7_flQX6MAo-R5OiNmQ5r9ikvZjy9T-GxOzefDKhnQ&scope=email+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&authuser=0&prompt=consent
 
-@RequestMapping("/api/v1/oauth/google")
+@RequestMapping("/api/v1/oauth/{provider}")
 @RestController
-class GoogleOauthController(
+class OAuthController(
     private val objectMapper: ObjectMapper,
-    private val googleOauthService: GoogleOauthService,
+    private val oauthService: OauthService,
     private val tokenService: TokenService,
     private val userSignUpService: UserSignUpService
 ) {
@@ -32,14 +33,14 @@ class GoogleOauthController(
         description = "구글 OAuth2 계정이 없는 경우 회원가입"
     )
     @GetMapping
-    fun getToken(@RequestParam code: String): TokenResponse {
-        return googleOauthService.requestToken(code)
-            .let {
-                log.info { "idToken : ${it.idToken}" }
-                log.info { "google token : ${it.accessToken}" }
-                tokenService.decodeTokenPayload(it.idToken)
+    fun getToken(@PathVariable accountType: String, @RequestParam code: String): TokenResponse {
+
+        return oauthService.requestToken(AccountTypeName.getByNameIgnoreCase(accountType), code)
+            .let { oAuthTokenDto ->
+                log.debug { "idToken : ${oAuthTokenDto.idToken}" }
+                tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
                     .let {
-                        log.info { "it: $it" }
+                        log.debug { "it: $it" }
                         objectMapper.readValue(it, OAuthAccountInfo::class.java)
                     }
             }?.let {

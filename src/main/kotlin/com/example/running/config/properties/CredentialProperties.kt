@@ -14,10 +14,12 @@ class CredentialProperties(
 
     @Value("\${credentials.file-path.google}")
     private val googleFilePath: String? = null
+    @Value("\${credentials.file-path.apple}")
+    private val appleFilePath: String? = null
 
     companion object {
-        lateinit var googleClientId: String
-        lateinit var googleClientSecret: String
+        lateinit var googleCredential: Credential
+        lateinit var appleCredential: Credential
     }
 
 
@@ -26,12 +28,12 @@ class CredentialProperties(
 
         assert(googleFilePath != null)
 
-        readFileAsString(googleFilePath!!)
-            .let {
-                objectMapper.readValue(it, GoogleCredential::class.java)
-            }.also {
-                googleClientId = it.clientId
-                googleClientSecret = it.clientSecret
-            }
+        googleCredential = readFileAsString(googleFilePath!!)
+            .let { objectMapper.readValue(it, Credential::class.java) }
+
+        assert(appleFilePath != null)
+
+        appleCredential = readFileAsString(appleFilePath!!)
+            .let { objectMapper.readValue(it, Credential::class.java) }
     }
 }

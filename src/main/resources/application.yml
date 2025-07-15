@@ -33,12 +33,14 @@ token:
 credentials:
   file-path:
     google: "src/main/resources/credentials/GoogleCredential.json"
+    apple: "src/main/resources/credentials/AppleCredential.json"
 
 oauth:
   google:
     token_url: "https://oauth2.googleapis.com/token"
-    grant_type: "authorization_code"
     redirect_url: "http://localhost:8080/api/v1/oauth/google"
+  apple:
+    token_url: "https://appleid.apple.com/auth/token"
 
 springdoc:
   version: '@project.version@'

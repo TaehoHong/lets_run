@@ -1,6 +1,6 @@
 package com.example.running.config.properties
 
-data class GoogleCredential(
+data class Credential(
     val clientId: String,
     val clientSecret: String
 )
