@@ -33,9 +33,9 @@ class OAuthController(
         description = "구글 OAuth2 계정이 없는 경우 회원가입"
     )
     @GetMapping
-    fun getToken(@PathVariable accountType: String, @RequestParam code: String): TokenResponse {
+    fun getToken(@PathVariable provider: String, @RequestParam code: String): TokenResponse {
 
-        return oauthService.requestToken(AccountTypeName.getByNameIgnoreCase(accountType), code)
+        return oauthService.requestToken(AccountTypeName.getByNameIgnoreCase(provider), code)
             .let { oAuthTokenDto ->
                 log.debug { "idToken : ${oAuthTokenDto.idToken}" }
                 tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
