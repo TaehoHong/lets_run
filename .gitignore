@@ -42,3 +42,4 @@ out/
 
 ### credential 파일 ###
 src/main/resources/credentials/
+.env

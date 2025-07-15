@@ -5,12 +5,14 @@ server:
 spring:
   application:
     name: running
+  config:
+    import: optional:file:.env[.properties]
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://3.34.2.110:3306/running
-    username: running-server-dev
-    password: GJe5fh8!03v^csr
+    url: jdbc:mariadb://192.168.0.15:3306/running
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
 
   jpa:
     properties:
@@ -32,12 +34,13 @@ token:
 credentials:
   file-path:
     google: "src/main/resources/credentials/GoogleCredential.json"
+    apple: "src/main/resources/credentials/AppleCredential.json"
 
 oauth:
   google:
     token_url: "https://oauth2.googleapis.com/token"
-    grant_type: "authorization_code"
-    redirect_url: "http://localhost:8080/api/v1/oauth/google"
+  apple:
+    token_url: "https://appleid.apple.com/auth/token"
 
 springdoc:
   version: '@project.version@'
