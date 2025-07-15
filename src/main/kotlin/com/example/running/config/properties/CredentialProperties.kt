@@ -1,11 +1,10 @@
 package com.example.running.config.properties
 
-import com.example.running.utils.readFileAsString
+import com.example.running.utils.readResourceAsString
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.annotation.PostConstruct
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import kotlin.also
 
 @Component
 class CredentialProperties(
@@ -28,12 +27,12 @@ class CredentialProperties(
 
         assert(googleFilePath != null)
 
-        googleCredential = readFileAsString(googleFilePath!!)
+        googleCredential = readResourceAsString(googleFilePath!!)
             .let { objectMapper.readValue(it, Credential::class.java) }
 
         assert(appleFilePath != null)
 
-        appleCredential = readFileAsString(appleFilePath!!)
+        appleCredential = readResourceAsString(appleFilePath!!)
             .let { objectMapper.readValue(it, Credential::class.java) }
     }
 }

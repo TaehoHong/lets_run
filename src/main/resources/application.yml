@@ -32,8 +32,8 @@ token:
 
 credentials:
   file-path:
-    google: "src/main/resources/credentials/GoogleCredential.json"
-    apple: "src/main/resources/credentials/AppleCredential.json"
+    google: "credentials/GoogleCredential.json"
+    apple: "credentials/AppleCredential.json"
 
 oauth:
   google:
