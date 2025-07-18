@@ -3,6 +3,7 @@ package com.example.running.domain.avatar.controller
 import com.example.running.domain.avatar.controller.dto.PurchaseItemRequest
 import com.example.running.domain.avatar.service.ItemPurchaseService
 import com.example.running.domain.avatar.service.UserItemService
+import com.example.running.helper.authenticateWithUser
 import com.example.running.utils.JwtPayloadParser
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -20,9 +21,9 @@ class UserItemController(
     @PostMapping
     fun purchaseItem(@RequestBody request: PurchaseItemRequest){
 
-        val userId = JwtPayloadParser.getUserId()
-        userItemService.verifyUserNotHaveItem(userId, request.itemId)
-
-        itemPurchaseService.purchase(userId, request.itemId)
+        authenticateWithUser { userId ->
+            userItemService.verifyUserNotHaveItems(userId, request.itemIds)
+            itemPurchaseService.purchase(userId, request.itemIds)
+        }
     }
 }

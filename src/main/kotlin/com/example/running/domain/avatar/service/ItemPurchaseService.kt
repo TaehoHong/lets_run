@@ -1,6 +1,5 @@
 package com.example.running.domain.avatar.service
 
-import com.example.running.domain.avatar.entity.UserItem
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
@@ -15,13 +14,14 @@ class ItemPurchaseService(
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun purchase(userId: Long, itemId: Long): UserItem {
-        return itemService.getById(itemId)
+    fun purchase(userId: Long, itemIds: List<Long>) {
+        itemService.getAllByIds(itemIds)
             .also {
-                userPointService.verifyPoint(userId, it.point)
+                val totalPoint = it.sumOf { it.point }
+                userPointService.verifyPoint(userId, totalPoint)
             }.let {
-                userItemService.save(userId, it)
-            }.also {
+                userItemService.saveAll(userId, it)
+            }.forEach {
                 userPointService.updatePoint(
                     PointUsageDto(
                         userId = userId,
