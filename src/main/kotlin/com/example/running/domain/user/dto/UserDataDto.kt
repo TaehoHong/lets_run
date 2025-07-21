@@ -8,6 +8,7 @@ data class UserDataDto(
     val authorityType: AuthorityType,
     val totalPoint: Int,
     val userAccounts: List<UserAccountDataDto>,
+    val avatarId: Long,
     val equippedItems: List<EquippedItemDto>
 )
 
@@ -23,5 +24,6 @@ data class EquippedItemDto(
     val id: Long,
     val itemTypeId: Short,
     val name: String,
-    val filePath: String
+    val filePath: String,
+    val unityFilePath: String
 )

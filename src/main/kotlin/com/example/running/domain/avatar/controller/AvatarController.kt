@@ -5,6 +5,7 @@ import com.example.running.domain.avatar.controller.dto.AvatarItemRequest
 import com.example.running.domain.avatar.controller.dto.AvatarResponse
 import com.example.running.domain.avatar.service.AvatarService
 import com.example.running.domain.avatar.service.AvatarUserItemService
+import com.example.running.helper.authenticateWithUser
 import com.example.running.utils.JwtPayloadParser
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import org.springframework.web.bind.annotation.*
@@ -29,14 +30,16 @@ class AvatarController(
     @PutMapping("/{id}")
     fun put(@PathVariable id: Long, @RequestBody request: AvatarItemRequest): AvatarResponse {
 
-        avatarService.verifyAvatarExists(
-            userId = JwtPayloadParser.getUserId(),
-            avatarId = id
-        )
+        return authenticateWithUser { userId ->
+            avatarService.verifyAvatarExists(
+                userId = JwtPayloadParser.getUserId(),
+                avatarId = id
+            )
 
-        return AvatarResponse(
-            avatarService.put(id, request.itemIds)
-        )
+             AvatarResponse(
+                avatarService.put(id, request.itemIds)
+            )
+        }
     }
 
     @ApiResponse(description = "아이템 구매후 바로 장착할때 사용")

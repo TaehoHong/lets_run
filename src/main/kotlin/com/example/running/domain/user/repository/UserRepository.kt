@@ -59,13 +59,15 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                                 accountType.name
                         )
                     ),
+                    avatar.id,
                     list(
                             Projections.constructor(
                                 EquippedItemDto::class.java,
                                 item.id,
                                 item.itemType.id,
                                 item.name,
-                                item.filePath
+                                item.filePath,
+                                item.unityFilePath
                         ).skipNulls()
                     ),
                 )
