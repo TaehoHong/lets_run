@@ -14,8 +14,9 @@ import com.example.running.domain.user.entity.QAccountType.Companion.accountType
 import com.example.running.domain.user.entity.QUser.Companion.user
 import com.example.running.domain.user.entity.QUserAccount.Companion.userAccount
 import com.example.running.domain.user.entity.User
+import com.example.running.utils.ifNotEmpty
 import com.querydsl.core.group.GroupBy.groupBy
-import com.querydsl.core.group.GroupBy.list
+import com.querydsl.core.group.GroupBy.set
 import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
@@ -37,12 +38,8 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
         return queryFactory.from(user)
             .innerJoin(userAccount).on(userAccount.user.id.eq(user.id).and(userAccount.isEnabled.isTrue).and(userAccount.isDeleted.isFalse))
             .innerJoin(userAccount.accountType, accountType)
-            .innerJoin(avatar).on(avatar.user.id.eq(user.id).and(avatar.isMain.isTrue))
-            .leftJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
-            .leftJoin(avatarUserItem.userItem, userItem)
-            .leftJoin(userItem.item, item)
-            .leftJoin(item.itemType, itemType)
             .innerJoin(userPoint).on(userPoint.user.id.eq(user.id))
+            .innerJoin(avatar).on(avatar.user.id.eq(user.id).and(avatar.isMain.isTrue))
             .where(user.id.eq(id).and(user.isEnabled.isTrue).and(user.isDeleted.isFalse))
             .transform(groupBy(user.id).list(
                 Projections.constructor(
@@ -51,7 +48,7 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                     user.nickname,
                     user.authorityType,
                     userPoint.point,
-                    list(
+                    set(
                         Projections.constructor(
                                 UserAccountDataDto::class.java,
                                 userAccount.id,
@@ -59,19 +56,30 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                                 accountType.name
                         )
                     ),
-                    avatar.id,
-                    list(
-                            Projections.constructor(
-                                EquippedItemDto::class.java,
-                                item.id,
-                                item.itemType.id,
-                                item.name,
-                                item.filePath,
-                                item.unityFilePath
-                        ).skipNulls()
-                    ),
+                    avatar.id
                 )
-            ))[0]
+            ))[0].also { dto ->
+
+            queryFactory.select(
+                Projections.constructor(
+                    EquippedItemDto::class.java,
+                    item.id,
+                    item.itemType.id,
+                    item.name,
+                    item.filePath,
+                    item.unityFilePath
+                )).from(avatar)
+                .leftJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
+                .leftJoin(avatarUserItem.userItem, userItem)
+                .leftJoin(userItem.item, item)
+                .leftJoin(item.itemType, itemType)
+                .where(
+                    avatar.user.id.eq(dto.id),
+                    avatar.isMain.isTrue
+                ).fetch().ifNotEmpty { items ->
+                        dto.equippedItems.addAll(items)
+                }
+        }
     }
 
 }

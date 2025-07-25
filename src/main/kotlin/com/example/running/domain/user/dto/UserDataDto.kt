@@ -7,10 +7,26 @@ data class UserDataDto(
     val name: String,
     val authorityType: AuthorityType,
     val totalPoint: Int,
-    val userAccounts: List<UserAccountDataDto>,
+    val userAccounts: Set<UserAccountDataDto>,
     val avatarId: Long,
-    val equippedItems: List<EquippedItemDto>
-)
+    val equippedItems: MutableList<EquippedItemDto> = mutableListOf()
+) {
+    constructor(
+        id: Long,
+        name: String,
+        authorityType: AuthorityType,
+        totalPoint: Int,
+        userAccounts: Set<UserAccountDataDto>,
+        avatarId: Long): this(
+            id = id,
+            name = name,
+            authorityType = authorityType,
+            totalPoint = totalPoint,
+            userAccounts = userAccounts,
+            avatarId = avatarId,
+            equippedItems = mutableListOf()
+        )
+}
 
 
 data class UserAccountDataDto(
