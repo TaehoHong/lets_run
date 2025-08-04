@@ -69,10 +69,10 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                     item.filePath,
                     item.unityFilePath
                 )).from(avatar)
-                .leftJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
-                .leftJoin(avatarUserItem.userItem, userItem)
-                .leftJoin(userItem.item, item)
-                .leftJoin(item.itemType, itemType)
+                .innerJoin(avatarUserItem).on(avatarUserItem.avatar.id.eq(avatar.id))
+                .innerJoin(avatarUserItem.userItem, userItem)
+                .innerJoin(userItem.item, item)
+                .innerJoin(item.itemType, itemType)
                 .where(
                     avatar.user.id.eq(dto.id),
                     avatar.isMain.isTrue

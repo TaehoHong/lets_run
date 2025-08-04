@@ -65,4 +65,11 @@ class AvatarUserItemService(
                 avatarUserItemRepository.deleteById(it)
             }
     }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun createDefault(userId: Long, avatarId: Long) {
+        userItemService.createDefault(userId)
+            .map { AvatarUserItem(avatarId, it) }
+            .let { avatarUserItemRepository.saveAll(it) }
+    }
 }

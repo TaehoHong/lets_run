@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 interface ItemRepository: JpaRepository<Item, Long>, QItemRepository {
+    fun findAllByNameIn(names: List<String>): List<Item>
 }
 
 

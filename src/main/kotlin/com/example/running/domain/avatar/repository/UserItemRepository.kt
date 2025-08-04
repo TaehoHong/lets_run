@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 interface UserItemRepository: JpaRepository<UserItem, Long>, QUserItemRepository {
-
 }
 interface QUserItemRepository {
     fun findAllItemIdByUserIdAndItemIds(userId: Long, itemIds: List<Long>): List<Long>

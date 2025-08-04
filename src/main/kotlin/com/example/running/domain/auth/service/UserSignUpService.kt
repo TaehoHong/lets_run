@@ -3,6 +3,7 @@ package com.example.running.domain.auth.service
 import com.example.running.domain.auth.controller.dto.TokenResponse
 import com.example.running.domain.auth.service.dto.OAuthAccountInfo
 import com.example.running.domain.auth.service.dto.UserCreationDto
+import com.example.running.domain.avatar.service.AvatarService
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.user.service.UserAccountService
@@ -18,6 +19,7 @@ import java.util.*
 class UserSignUpService(
     private val userService: UserService,
     private val userAccountService: UserAccountService,
+    private val avatarService: AvatarService,
     private val tokenService: TokenService
 ) {
 
@@ -43,7 +45,8 @@ class UserSignUpService(
                 accountType = accountType,
             )
         }.let {
-            userService.save(it)
+            val user = userService.save(it)
+            avatarService.createDefault(user.id)
             userAccountService.getByEmail(it.email)
                 ?: run { throw RuntimeException(ApiError.NOT_FOUND_USER_ACCOUNT.message) }
         }

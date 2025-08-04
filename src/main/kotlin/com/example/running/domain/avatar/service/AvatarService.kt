@@ -15,7 +15,14 @@ class AvatarService(
     private val itemService: ItemService
 ) {
 
-    @Transactional(readOnly = true)
+    @Transactional
+    fun createDefault(userId: Long) {
+        saveAvatar(userId, true)
+            .also {
+                avatarUserItemService.createDefault(userId, it.id)
+            }
+    }
+
     fun getMainAvatar(userId: Long): AvatarDto {
         val avatar = avatarRepository.findByUserIdAndIsMain(userId, true)
             ?: run { saveAvatar(userId, true) }
@@ -24,7 +31,6 @@ class AvatarService(
             avatar, avatarUserItemService.getAllByAvatarId(avatar.id))
     }
 
-    @Transactional(rollbackFor = [Exception::class])
     fun saveAvatar(userId: Long, isMain: Boolean): Avatar {
         return avatarRepository.save(
             Avatar(

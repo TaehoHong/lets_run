@@ -1,7 +1,6 @@
 package com.example.running.domain.user.service
 
 import com.example.running.domain.auth.service.dto.UserCreationDto
-import com.example.running.domain.avatar.service.AvatarService
 import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.user.dto.UserDataDto
@@ -13,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class UserService(
     private val userAccountService: UserAccountService,
-    private val avatarService: AvatarService,
     private val userPointService: UserPointService,
     private val userRepository: UserRepository
 ) {
@@ -37,7 +35,6 @@ class UserService(
             accountType = userCreationDto.accountType
         )
         userPointService.save(userId = user.id)
-        avatarService.saveAvatar(user.id, true)
 
         return user
     }

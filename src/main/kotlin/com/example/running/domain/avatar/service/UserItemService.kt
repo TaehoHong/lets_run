@@ -9,8 +9,11 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UserItemService(
+    private val itemService: ItemService,
     private val userItemRepository: UserItemRepository,
 ) {
+
+    private val defaultItemNames = listOf("New_Pant_02", "New_Cloth_10", "Normal_Hair9")
 
     @Transactional(readOnly = true)
     fun verifyUserNotHaveItems(userId: Long, itemIds: List<Long>) {
@@ -31,5 +34,14 @@ class UserItemService(
     @Transactional(readOnly = true)
     fun getAllByItemIds(itemIds: List<Long>): List<UserItem> {
         return userItemRepository.findAllByItemIdIn(itemIds)
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun createDefault(userId: Long): List<UserItem> {
+        return itemService.getAllByNames(defaultItemNames)
+            .map { UserItem(userId = userId, item = it) }
+            .let {
+                userItemRepository.saveAll(it)
+            }
     }
 }

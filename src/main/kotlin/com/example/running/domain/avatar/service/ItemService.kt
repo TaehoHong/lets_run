@@ -41,4 +41,8 @@ class ItemService(
     fun getAllItemTypeId(ids: List<Long>): List<Short> {
         return itemRepository.findAllItemTypeIdByIdIn(ids)
     }
+
+    fun getAllByNames(names: List<String>): List<Item> {
+        return itemRepository.findAllByNameIn(names)
+    }
 }
