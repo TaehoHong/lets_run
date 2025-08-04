@@ -1,19 +1,15 @@
 package com.example.running.domain.auth.controller
 
-import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.auth.controller.dto.TokenResponse
 import com.example.running.domain.auth.service.OauthService
 import com.example.running.domain.auth.service.UserSignUpService
 import com.example.running.domain.auth.service.dto.OAuthAccountInfo
+import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.security.service.TokenService
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 //http://localhost:8080/login/oauth2/code/google?code=4%2F0AQlEd8yywxIkfIjJ2lriidY4mX1sD7_flQX6MAo-R5OiNmQ5r9ikvZjy9T-GxOzefDKhnQ&scope=email+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&authuser=0&prompt=consent
 
@@ -34,8 +30,9 @@ class OAuthController(
     )
     @GetMapping
     fun getToken(@PathVariable provider: String, @RequestParam code: String): TokenResponse {
+        val accountTypeName = AccountTypeName.getByNameIgnoreCase(provider)
 
-        return oauthService.requestToken(AccountTypeName.getByNameIgnoreCase(provider), code)
+        return oauthService.requestToken(accountTypeName, code)
             .let { oAuthTokenDto ->
                 log.debug { "idToken : ${oAuthTokenDto.idToken}" }
                 tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
@@ -44,7 +41,7 @@ class OAuthController(
                         objectMapper.readValue(it, OAuthAccountInfo::class.java)
                     }
             }?.let {
-                userSignUpService.signup(AccountTypeName.GOOGLE, it)
+                userSignUpService.signup(accountTypeName, it)
             }?.also { log.info { "access token : ${it.accessToken}"} }
             ?: run { throw RuntimeException("Google Token parse Error")}
     }

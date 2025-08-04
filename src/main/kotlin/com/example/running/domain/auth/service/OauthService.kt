@@ -35,11 +35,11 @@ class OauthService(
                 it["code"] = code //URLEncoder().encode(code, Charset.forName("UTF-8"))
             }.runCatching {
                 WebClientUtils.postRequest(
-                    url = tokenUrl!!,
+                    url = tokenUrl,
                     queryParams = this
                 )
             }.onSuccess {
-                log.debug { "google token response : $it" }
+                log.debug { "token response : $it" }
             }.onFailure { exception ->
                 when(exception) {
                     is WebClientResponseException -> {

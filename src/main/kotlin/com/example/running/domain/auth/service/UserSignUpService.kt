@@ -1,16 +1,17 @@
 package com.example.running.domain.auth.service
 
+import com.example.running.domain.auth.controller.dto.TokenResponse
+import com.example.running.domain.auth.service.dto.OAuthAccountInfo
+import com.example.running.domain.auth.service.dto.UserCreationDto
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.user.service.UserAccountService
 import com.example.running.domain.user.service.UserService
-import com.example.running.domain.auth.controller.dto.TokenResponse
-import com.example.running.domain.auth.service.dto.OAuthAccountInfo
-import com.example.running.domain.auth.service.dto.UserCreationDto
 import com.example.running.exception.ApiError
 import com.example.running.security.service.TokenService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.*
 
 
 @Service
@@ -38,7 +39,7 @@ class UserSignUpService(
         return oAuthAccountInfo.let {
             UserCreationDto(
                 email = it.email,
-                nickname = it.name,
+                nickname = it.nickname?:generateNickname(),
                 accountType = accountType,
             )
         }.let {
@@ -46,5 +47,9 @@ class UserSignUpService(
             userAccountService.getByEmail(it.email)
                 ?: run { throw RuntimeException(ApiError.NOT_FOUND_USER_ACCOUNT.message) }
         }
+    }
+
+    private fun generateNickname(): String {
+        return "태호군#" + UUID.randomUUID().toString().substring(0, 5)
     }
 }

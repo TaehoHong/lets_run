@@ -12,7 +12,13 @@ class UserPointService(
     private val userPointRepository: UserPointRepository
 ) {
 
-    @Transactional(readOnly = true)
+    @Transactional
+    fun save(userId: Long) {
+        userPointRepository.save(
+            UserPoint(userId = userId)
+        )
+    }
+
     fun verifyPoint(userId: Long, point: Int) {
         getOrCreateByUserId(userId).apply {
             if (this.point < point) {
