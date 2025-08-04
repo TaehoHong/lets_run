@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 @Service
 class OauthService(
     private val oAuthProperties: OAuthProperties,
+    private val appleClientSecretService: AppleClientSecretService,
     private val objectMapper: ObjectMapper
 ) {
     private val GRANT_TYPE = "authorization_code"
@@ -63,7 +64,7 @@ class OauthService(
     private fun getCredential(accountType: AccountTypeName): Credential {
         return when(accountType) {
             AccountTypeName.GOOGLE -> CredentialProperties.googleCredential
-            AccountTypeName.APPLE -> CredentialProperties.appleCredential
+            AccountTypeName.APPLE -> appleClientSecretService.getCredential()
         }
     }
 }
