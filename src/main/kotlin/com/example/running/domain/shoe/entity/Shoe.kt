@@ -41,6 +41,14 @@ class Shoe (
 
 ): BaseDatetime() {
 
+    constructor(id: Long): this(
+        id = id,
+        user = User(id = 0),
+        brand = "",
+        model = "",
+        targetDistance = null
+    )
+
     fun addDistance(distance: Int) {
         totalDistance += distance
     }

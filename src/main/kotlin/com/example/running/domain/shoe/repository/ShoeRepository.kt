@@ -8,7 +8,9 @@ import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
-interface ShoeRepository: JpaRepository<Shoe, Long>, QShoeRepository
+interface ShoeRepository: JpaRepository<Shoe, Long>, QShoeRepository {
+    fun findShoeByUserIdAndIsMain(userId: Long, main: Boolean): Shoe?
+}
 
 
 interface QShoeRepository {

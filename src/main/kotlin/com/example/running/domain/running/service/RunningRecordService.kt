@@ -6,11 +6,8 @@ import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.running.service.dto.RunningRecordDto
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
-import com.example.running.domain.running.service.dto.StartRunningDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
 
 @Service
 class RunningRecordService(
@@ -18,16 +15,12 @@ class RunningRecordService(
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun startRecord(userId: Long, startDateTime: OffsetDateTime): StartRunningDto {
-        endRecord(userId)
-        return runningRecordRepository.save(
-            RunningRecord(userId = userId, startDateTime = startDateTime)
-        ).let {
-            StartRunningDto(it.id)
-        }
+    fun save(runningRecord: RunningRecord): RunningRecord {
+        return runningRecordRepository.save(runningRecord)
     }
-
-    private fun endRecord(userId: Long) {
+    
+    @Transactional(rollbackFor = [Exception::class])
+    fun endPreviousRecords(userId: Long) {
         runningRecordRepository.updateIsEndById(true, userId)
     }
 
@@ -48,14 +41,15 @@ class RunningRecordService(
 
         getByIdAndUserId(updateDto.runningRecordId, updateDto.userId)
             .apply {
-                this.endRecord(
+                this.update(
+                    updateDto.shoeId,
                     updateDto.distance,
                     updateDto.durationSec,
                     updateDto.cadence,
                     updateDto.heartRate,
                     updateDto.calorie,
-                    updateDto.endDateTime
-
+                    updateDto.startDatetime,
+                    updateDto.endDatetime
                 )
             }
     }

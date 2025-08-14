@@ -1,12 +1,9 @@
 package com.example.running.domain.running.controller
 
 import com.example.running.domain.common.dto.CursorResult
-import com.example.running.domain.running.controller.dto.CreationRunningRecord
-import com.example.running.domain.running.controller.dto.EndRecordRequest
-import com.example.running.domain.running.controller.dto.RunningRecordSearchRequest
-import com.example.running.domain.running.controller.dto.RunningRecordSearchResponse
-import com.example.running.domain.running.controller.dto.StartRunningResponse
+import com.example.running.domain.running.controller.dto.*
 import com.example.running.domain.running.service.RunningRecordService
+import com.example.running.domain.running.service.RunningStartService
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.helper.authenticateWithUser
 import com.example.running.utils.JwtPayloadParser
@@ -17,13 +14,14 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/v1/running")
 @RestController
 class RunningRecordController(
+    private val runningStartService: RunningStartService,
     private val runningRecordService: RunningRecordService
 ){
 
     @PostMapping
     fun startRecord(@RequestBody creationRunningRecord: CreationRunningRecord): StartRunningResponse {
         return authenticateWithUser { userId ->
-            runningRecordService.startRecord(userId, creationRunningRecord.getStartDatetime())
+            runningStartService.startRecord(userId, creationRunningRecord.getStartDatetime())
                 .let { StartRunningResponse(it.id) }
         }
     }
@@ -38,21 +36,23 @@ class RunningRecordController(
         }
     }
 
-    @PutMapping("/{id}/end")
-    fun endRecord(@PathVariable id: Long,
+    @PutMapping("/{id}")
+    fun update(@PathVariable id: Long,
                   @RequestParam(required = false, defaultValue = "UTC") timezone: String,
-                  @RequestBody endRecord: EndRecordRequest) {
+                  @RequestBody updateRequest: UpdateRecordRequest) {
 
         runningRecordService.updateRecord(
             RunningRecordUpdateDto(
                 userId = JwtPayloadParser.getUserId(),
                 runningRecordId = id,
-                distance = endRecord.distance,
-                durationSec = endRecord.durationSec,
-                cadence = endRecord.cadence,
-                heartRate = endRecord.heartRate,
-                calorie = endRecord.calorie,
-                endDateTime = convertToOffsetDateTime(endRecord.endTimestamp, timezone)
+                shoeId = updateRequest.shoeId,
+                distance = updateRequest.distance,
+                durationSec = updateRequest.durationSec,
+                cadence = updateRequest.cadence,
+                heartRate = updateRequest.heartRate,
+                calorie = updateRequest.calorie,
+                startDatetime = updateRequest.startTimestamp?.let{ convertToOffsetDateTime(it, timezone) } ,
+                endDatetime = updateRequest.endTimestamp?.let { convertToOffsetDateTime(it, timezone) }
             )
         )
     }

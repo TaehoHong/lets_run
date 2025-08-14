@@ -1,12 +1,11 @@
 package com.example.running.domain.running.entity
 
 import com.example.running.domain.common.entity.CreatedDatetime
+import com.example.running.domain.shoe.entity.Shoe
 import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
-import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.time.OffsetTime
 
 @Entity
 class RunningRecord(
@@ -15,38 +14,42 @@ class RunningRecord(
     val id: Long = 0,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED", referencedColumnName = "id")
+    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
     val user: User,
 
-    @Column(name = "distance", nullable = false, columnDefinition = "INT UNSIGNED")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shoe_id", nullable = false, referencedColumnName = "id")
+    var shoe: Shoe,
+
+    @Column(name = "distance", nullable = false)
     var distance: Long = 0,
 
-    @Column(name = "duration_sec", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @Column(name = "duration_sec", nullable = false)
     var durationSec: Long = 0,
 
-    @Column(name = "cadence", nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    @Column(name = "cadence", nullable = false)
     var cadence: Short = 0,
 
-    @Column(name = "heart_rate", nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    @Column(name = "heart_rate", nullable = false)
     var heartRate: Short = 0,
 
-    @Column(name = "calorie", nullable = false, columnDefinition = "INT UNSIGNED")
+    @Column(name = "calorie", nullable = false)
     var calorie: Int = 0,
 
     @ColumnDefault("0")
-    @Column(name = "is_user_input", nullable = false, columnDefinition = "TINYINT(1)")
+    @Column(name = "is_user_input", nullable = false)
     val isUserInput: Boolean = false,
 
     @ColumnDefault("1")
-    @Column(name = "is_statistic_included", nullable = false, columnDefinition = "TINYINT(1)")
+    @Column(name = "is_statistic_included", nullable = false)
     val isStatisticIncluded: Boolean = true,
 
     @ColumnDefault("0")
-    @Column(name = "is_end", nullable = false, columnDefinition = "TINYINT(1)")
+    @Column(name = "is_end", nullable = false)
     var isEnd: Boolean = false,
 
     @Column(name = "start_datetime", nullable = false, columnDefinition = "DATETIME")
-    val startDatetime: OffsetDateTime = OffsetDateTime.now(),
+    var startDatetime: OffsetDateTime = OffsetDateTime.now(),
 
     @Column(name = "end_datetime", columnDefinition = "DATETIME")
     var endDatetime: OffsetDateTime? = null
@@ -55,21 +58,33 @@ class RunningRecord(
 
     constructor(id: Long): this(
         id = id,
-        user = User(id = 0)
+        user = User(id = 0),
+        shoe = Shoe(id = 0),
     )
 
-    constructor(userId: Long, startDateTime: OffsetDateTime): this(
+    constructor(userId: Long, shoeId: Long, startDateTime: OffsetDateTime): this(
         user = User(id = userId),
+        shoe = Shoe(id = shoeId),
         startDatetime = startDateTime,
     )
 
-    fun endRecord(distance: Long, durationSec: Long, cadence: Short, heartRate: Short, calorie: Int, endDatetime: OffsetDateTime){
+    fun update(shoeId: Long?,
+               distance: Long?,
+               durationSec: Long?,
+               cadence: Short?,
+               heartRate: Short?,
+               calorie: Int?,
+               startDatetime: OffsetDateTime?,
+               endDatetime: OffsetDateTime?
+    ){
         this.isEnd = true
-        this.distance = distance
-        this.durationSec = durationSec
-        this.cadence = cadence
-        this.heartRate = heartRate
-        this.calorie = calorie
-        this.endDatetime = endDatetime
+        shoeId?.also { this.shoe = Shoe(id = it)  }
+        distance?.also{ this.distance = it }
+        durationSec?.also{ this.durationSec = it }
+        cadence?.also{ this.cadence = it }
+        heartRate?.also { this.heartRate = it }
+        calorie?.also { this.calorie = it }
+        startDatetime?.also { this.startDatetime = it }
+        endDatetime?.also { this.endDatetime = it }
     }
 }

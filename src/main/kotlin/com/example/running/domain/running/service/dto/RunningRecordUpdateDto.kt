@@ -5,11 +5,13 @@ import java.time.OffsetDateTime
 class RunningRecordUpdateDto(
     val userId: Long,
     val runningRecordId: Long,
-    val distance: Long,
-    val durationSec: Long,
-    val cadence: Short,
-    val heartRate: Short,
-    val calorie: Int,
-    val endDateTime: OffsetDateTime
+    val shoeId: Long? = null,
+    val distance: Long? = null,
+    val durationSec: Long? = null,
+    val cadence: Short? = null,
+    val heartRate: Short? = null,
+    val calorie: Int? = null,
+    val startDatetime: OffsetDateTime? = null,
+    val endDatetime: OffsetDateTime? = null
 ) {
 }
