@@ -1,0 +1,23 @@
+package com.example.running.domain.running.controller.dto
+
+import com.example.running.domain.running.service.dto.EndRunningDto
+
+class EndRunningResponse(
+    val id: Long,
+    val distance: Long,
+    val durationSec: Long,
+    val cadence: Short,
+    val heartRate: Short,
+    val calorie: Int,
+    val point: Int
+) {
+    constructor(dto: EndRunningDto) : this(
+        id = dto.runningRecordId,
+        distance = dto.distance,
+        durationSec = dto.durationSec,
+        cadence = dto.cadence,
+        heartRate = dto.heartRate,
+        calorie = dto.calorie,
+        point = dto.point
+    )
+}

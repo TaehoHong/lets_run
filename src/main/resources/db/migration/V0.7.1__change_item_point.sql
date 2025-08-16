@@ -1,0 +1,1 @@
+UPDATE item SET item.point = item.point * 10;

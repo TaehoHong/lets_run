@@ -2,6 +2,7 @@ package com.example.running.domain.running.controller
 
 import com.example.running.domain.common.dto.CursorResult
 import com.example.running.domain.running.controller.dto.*
+import com.example.running.domain.running.service.RunningEndService
 import com.example.running.domain.running.service.RunningRecordService
 import com.example.running.domain.running.service.RunningStartService
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*
 @RestController
 class RunningRecordController(
     private val runningStartService: RunningStartService,
+    private val runningEndService: RunningEndService,
     private val runningRecordService: RunningRecordService
 ){
 
@@ -33,6 +35,23 @@ class RunningRecordController(
                 .let {
                     it.of { recordDto -> RunningRecordSearchResponse(recordDto) }
                 }
+        }
+    }
+
+    @PostMapping("/{id}/end")
+    fun end(@PathVariable id: Long, @RequestBody request: EndRunningRequest):  EndRunningResponse {
+        return runningEndService.end(
+            RunningRecordUpdateDto(
+                userId = JwtPayloadParser.getUserId(),
+                runningRecordId = id,
+                distance = request.distance,
+                durationSec = request.durationSec,
+                cadence = request.cadence,
+                heartRate = request.heartRate,
+                calorie = request.calorie
+            )
+        ).let {
+            EndRunningResponse(it)
         }
     }
 

@@ -28,8 +28,8 @@ class UserPointService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun updatePoint(pointUsageDto: PointUsageDto) {
-        getOrCreateByUserId(pointUsageDto.userId).apply {
+    fun updatePoint(pointUsageDto: PointUsageDto): UserPoint {
+        return getOrCreateByUserId(pointUsageDto.userId).apply {
             this.point += pointUsageDto.point
         }.let {
             userPointRepository.save(it)

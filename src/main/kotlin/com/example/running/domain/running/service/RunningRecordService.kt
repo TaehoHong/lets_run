@@ -37,9 +37,8 @@ class RunningRecordService(
 
 
     @Transactional(rollbackFor = [Exception::class])
-    fun updateRecord(updateDto: RunningRecordUpdateDto) {
-
-        getByIdAndUserId(updateDto.runningRecordId, updateDto.userId)
+    fun updateRecord(updateDto: RunningRecordUpdateDto): RunningRecord {
+        return getByIdAndUserId(updateDto.runningRecordId, updateDto.userId)
             .apply {
                 this.update(
                     updateDto.shoeId,

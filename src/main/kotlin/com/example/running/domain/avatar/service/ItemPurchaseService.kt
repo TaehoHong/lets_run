@@ -7,12 +7,13 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class ItemPurchaseService(
+class ItemPurchaseService (
     private val userItemService: UserItemService,
     private val itemService: ItemService,
     private val userPointService: UserPointService
 ) {
 
+    //결제 상태와 남은 포인트 반환값 추가 필요
     @Transactional(rollbackFor = [Exception::class])
     fun purchase(userId: Long, itemIds: List<Long>) {
         itemService.getAllByIds(itemIds)
