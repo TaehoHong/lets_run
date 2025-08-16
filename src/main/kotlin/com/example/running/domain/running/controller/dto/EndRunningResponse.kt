@@ -4,6 +4,7 @@ import com.example.running.domain.running.service.dto.EndRunningDto
 
 class EndRunningResponse(
     val id: Long,
+    val shoeId: Long,
     val distance: Long,
     val durationSec: Long,
     val cadence: Short,
@@ -13,6 +14,7 @@ class EndRunningResponse(
 ) {
     constructor(dto: EndRunningDto) : this(
         id = dto.runningRecordId,
+        shoeId = dto.shoeId,
         distance = dto.distance,
         durationSec = dto.durationSec,
         cadence = dto.cadence,

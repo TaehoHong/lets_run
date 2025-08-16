@@ -39,7 +39,7 @@ class RunningRecordController(
     }
 
     @PostMapping("/{id}/end")
-    fun end(@PathVariable id: Long, @RequestBody request: EndRunningRequest):  EndRunningResponse {
+    fun end(@PathVariable id: Long, @RequestBody request: EndRunningRequest): EndRunningResponse {
         return runningEndService.end(
             RunningRecordUpdateDto(
                 userId = JwtPayloadParser.getUserId(),
