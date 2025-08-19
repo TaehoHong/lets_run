@@ -4,7 +4,7 @@ import com.example.running.domain.running.service.dto.EndRunningDto
 
 class EndRunningResponse(
     val id: Long,
-    val shoeId: Long,
+    val shoeId: Long?,
     val distance: Long,
     val durationSec: Long,
     val cadence: Short,

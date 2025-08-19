@@ -18,8 +18,8 @@ class RunningRecord(
     val user: User,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shoe_id", nullable = false, referencedColumnName = "id")
-    var shoe: Shoe,
+    @JoinColumn(name = "shoe_id", referencedColumnName = "id")
+    var shoe: Shoe? = null,
 
     @Column(name = "distance", nullable = false)
     var distance: Long = 0,
@@ -58,13 +58,12 @@ class RunningRecord(
 
     constructor(id: Long): this(
         id = id,
-        user = User(id = 0),
-        shoe = Shoe(id = 0),
+        user = User(id = 0)
     )
 
-    constructor(userId: Long, shoeId: Long, startDateTime: OffsetDateTime): this(
+    constructor(userId: Long, shoeId: Long? = null, startDateTime: OffsetDateTime): this(
         user = User(id = userId),
-        shoe = Shoe(id = shoeId),
+        shoe = shoeId?.let{ Shoe(id = it) },
         startDatetime = startDateTime,
     )
 

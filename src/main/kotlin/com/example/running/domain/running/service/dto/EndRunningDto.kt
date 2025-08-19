@@ -4,7 +4,7 @@ import com.example.running.domain.running.entity.RunningRecord
 
 class EndRunningDto(
     val userId: Long,
-    val shoeId: Long,
+    val shoeId: Long?,
     val runningRecordId: Long,
     val distance: Long,
     val durationSec: Long,
@@ -16,7 +16,7 @@ class EndRunningDto(
     constructor(record: RunningRecord, point: Int): this(
         userId = record.user.id,
         runningRecordId = record.user.id,
-        shoeId = record.shoe.id,
+        shoeId = record.shoe?.id,
         distance = record.distance,
         durationSec = record.durationSec,
         cadence = record.cadence,

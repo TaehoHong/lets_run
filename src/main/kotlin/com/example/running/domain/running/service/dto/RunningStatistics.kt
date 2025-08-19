@@ -6,8 +6,7 @@ import com.example.running.domain.running.enums.RunningStatisticType
 class RunningStatistics(
     runningRecords: List<RunningRecord>, statisticType: RunningStatisticType
 ){
-
-    val statisticType: RunningStatisticType;
+    val statisticType: RunningStatisticType
     val totalDistance: Long
     val totalDurationSec: Long
     val averageDistance: Int

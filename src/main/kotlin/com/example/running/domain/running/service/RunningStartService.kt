@@ -16,7 +16,7 @@ class RunningStartService(
     @Transactional(rollbackFor = [Exception::class])
     fun startRecord(userId: Long, startDateTime: OffsetDateTime): StartRunningDto {
         runningRecordService.endPreviousRecords(userId)
-        val shoeId = shoeService.getMainShoe(userId).id
+        val shoeId = shoeService.findMainShoe(userId)?.id
 
         return runningRecordService.save(
             RunningRecord(userId = userId, shoeId = shoeId, startDateTime = startDateTime)

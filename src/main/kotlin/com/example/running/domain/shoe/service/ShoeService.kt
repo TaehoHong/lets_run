@@ -67,9 +67,8 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
             .orElseThrow { ApiException(ApiError.NOT_FOUND_SHOE) }
     }
 
-    fun getMainShoe(userId: Long): ShoeDto {
+    fun findMainShoe(userId: Long): ShoeDto? {
         return shoeRepository.findShoeByUserIdAndIsMain(userId, true)
             ?.let { ShoeDto(it) }
-            ?: run { throw ApiException(ApiError.NOT_FOUND_SHOE) }
     }
 }
