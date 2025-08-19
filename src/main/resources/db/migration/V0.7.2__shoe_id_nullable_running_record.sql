@@ -1,0 +1,1 @@
+ALTER TABLE running_record CHANGE COLUMN shoe_id shoe_id BIGINT UNSIGNED NULL AFTER user_id;
