@@ -31,7 +31,6 @@ class UserSignUpService(
                 tokenService.generateTokens(
                     userId = this.user.id,
                     nickname = this.user.nickname,
-                    email = this.email,
                     authorityType = this.user.authorityType
                 )
             }

@@ -46,6 +46,7 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/oauth/*").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/auth/*").permitAll()
 
                 authorizeHttpRequests.requestMatchers("/api/v1/avatars/*").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PUT, "/api/v1/avatars/*").authenticated()

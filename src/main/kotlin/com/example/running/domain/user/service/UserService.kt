@@ -6,6 +6,7 @@ import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.repository.UserRepository
+import com.example.running.domain.user.service.dto.UserDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -42,5 +43,9 @@ class UserService(
 
     fun getUserDataDto(userId: Long): UserDataDto {
         return userRepository.getUserDataDtoById(userId)
+    }
+
+    fun getUserDto(id: Long): UserDto {
+        return userRepository.getUserDto(id)
     }
 }

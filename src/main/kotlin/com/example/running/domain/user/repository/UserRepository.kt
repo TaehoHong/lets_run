@@ -14,6 +14,7 @@ import com.example.running.domain.user.entity.QAccountType.Companion.accountType
 import com.example.running.domain.user.entity.QUser.Companion.user
 import com.example.running.domain.user.entity.QUserAccount.Companion.userAccount
 import com.example.running.domain.user.entity.User
+import com.example.running.domain.user.service.dto.UserDto
 import com.example.running.utils.ifNotEmpty
 import com.querydsl.core.group.GroupBy.groupBy
 import com.querydsl.core.group.GroupBy.set
@@ -29,6 +30,7 @@ interface UserRepository: JpaRepository<User, Long>, QUserRepository {
 
 interface QUserRepository {
     fun getUserDataDtoById(id: Long): UserDataDto
+    fun getUserDto(id: Long): UserDto
 }
 
 @Repository
@@ -80,6 +82,16 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                         dto.equippedItems.addAll(items)
                 }
         }
+    }
+
+    override fun getUserDto(id: Long): UserDto {
+        return queryFactory.select(
+            Projections.constructor(
+                UserDto::class.java,
+                    user.id,
+                    user.nickname,
+                )
+        ).from(user)
     }
 
 }

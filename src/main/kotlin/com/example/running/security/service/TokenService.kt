@@ -1,8 +1,8 @@
 package com.example.running.security.service
 
 import com.example.running.config.properties.JwtProperties
-import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.auth.controller.dto.TokenResponse
+import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.exception.ErrorCode
 import com.example.running.security.exception.TokenException
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -35,27 +35,27 @@ class TokenService {
 
 
     @Transactional
-    fun generateTokens(userId: Long, nickname: String, email: String, authorityType: AuthorityType): TokenResponse {
+    fun generateTokens(userId: Long, nickname: String, authorityType: AuthorityType): TokenResponse {
         return TokenResponse(
             userId = userId,
             nickname = nickname,
-            accessToken = generateAccessToken(userId, email, authorityType),
-            refreshToken = generateRefreshToken(userId, email, authorityType)
+            accessToken = generateAccessToken(userId, nickname, authorityType),
+            refreshToken = generateRefreshToken(userId, nickname, authorityType)
         )
     }
 
 
-    fun generateAccessToken(userId: Long, email: String, authorityType: AuthorityType) =
-        generateToken(userId, email, authorityType, ACCESS_TOKEN_EXPIRATION)
+    private fun generateAccessToken(userId: Long, nickname: String, authorityType: AuthorityType) =
+        generateToken(userId, nickname, authorityType, ACCESS_TOKEN_EXPIRATION)
 
-    fun generateRefreshToken(userId: Long, email: String, authorityType: AuthorityType) =
-        generateToken(userId, email, authorityType, REFRESH_TOKEN_EXPIRATION)
+    private fun generateRefreshToken(userId: Long, nickname: String, authorityType: AuthorityType) =
+        generateToken(userId, nickname, authorityType, REFRESH_TOKEN_EXPIRATION)
 
 
 
-    private fun generateToken(userId: Long, email: String, authorityType: AuthorityType, tokenExpirationTime: Long): String {
+    private fun generateToken(userId: Long, nickname: String, authorityType: AuthorityType, tokenExpirationTime: Long): String {
 
-        val claims = createClaims(userId, email, authorityType)
+        val claims = createClaims(userId, nickname, authorityType)
 
         val now = Date()
         val expiredDate = Date(now.time + (tokenExpirationTime * 1000))
@@ -69,10 +69,10 @@ class TokenService {
     }
 
 
-    private fun createClaims(userId: Long, email: String, authorityType: AuthorityType) =
+    private fun createClaims(userId: Long, nickname: String, authorityType: AuthorityType) =
         Jwts.claims()
             .id(userId.toString())
-            .subject(email)
+            .subject(nickname)
             .also {
                 it.add("role", authorityType.role)
             }.build()
