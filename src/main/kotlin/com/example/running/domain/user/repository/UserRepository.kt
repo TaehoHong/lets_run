@@ -30,7 +30,7 @@ interface UserRepository: JpaRepository<User, Long>, QUserRepository {
 
 interface QUserRepository {
     fun getUserDataDtoById(id: Long): UserDataDto
-    fun getUserDto(id: Long): UserDto
+    fun findUserDto(id: Long): UserDto?
 }
 
 @Repository
@@ -84,7 +84,7 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
         }
     }
 
-    override fun getUserDto(id: Long): UserDto {
+    override fun findUserDto(id: Long): UserDto? {
         return queryFactory.select(
             Projections.constructor(
                 UserDto::class.java,
@@ -92,6 +92,12 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                     user.nickname,
                 )
         ).from(user)
+            .where(
+                user.id.eq(id),
+                user.isEnabled.isTrue,
+                user.isDeleted.isFalse
+            )
+            .fetchOne()
     }
 
 }

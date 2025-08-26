@@ -29,7 +29,7 @@ logging:
 token:
   expiration:
     access: 14400
-    refresh: 144000
+    refresh: 7884000
 
 credentials:
   file-path:

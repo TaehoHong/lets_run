@@ -7,6 +7,9 @@ import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.repository.UserRepository
 import com.example.running.domain.user.service.dto.UserDto
+import com.example.running.exception.ApiError
+import com.example.running.exception.ApiException
+import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -46,6 +49,7 @@ class UserService(
     }
 
     fun getUserDto(id: Long): UserDto {
-        return userRepository.getUserDto(id)
+        return userRepository.findUserDto(id)
+            ?:run{ throw ApiException(ApiError.NOT_FOUND_USER) }
     }
 }
