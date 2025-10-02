@@ -91,7 +91,7 @@ class TokenService {
 
 
     @Throws(IOException::class)
-    fun verifyToken(tokenHeader: String): Boolean {
+    fun verify(tokenHeader: String): Boolean {
         if (!tokenHeader.startsWith(JwtProperties.TOKEN_PREFIX)) {
             throw TokenException(ErrorCode.UNAUTHORIZED)
         } else {

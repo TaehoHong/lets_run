@@ -21,7 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint,
     private val accessDeniedException: CustomAccessDeniedHandler,
-    private val tokenService:TokenService
+    private val authenticationFilter: AuthenticationFilter
 ) {
 
     @Throws(Exception::class)
@@ -30,7 +30,7 @@ class SecurityConfig(
         return http
             .cors { corsConfigurer -> corsConfigurer.configurationSource(corsConfigurationSource()) }
             .csrf { it.disable() }
-            .addFilterBefore(AuthenticationFilter(tokenService), UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .sessionManagement { sessionManagement ->
                 sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
