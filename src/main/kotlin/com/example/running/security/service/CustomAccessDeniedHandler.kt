@@ -17,12 +17,12 @@ class CustomAccessDeniedHandler(
     private val objectMapper: ObjectMapper,
 ): AccessDeniedHandler {
 
-    private val log = KotlinLogging.logger {  }
+    private val logger = KotlinLogging.logger {  }
 
     @Throws(IOException::class)
     override fun handle(request: HttpServletRequest, response: HttpServletResponse, accessDeniedException: AccessDeniedException) {
 
-        log.error("error : {}", accessDeniedException.message)
+        logger.error { "${"error : {}"} ${accessDeniedException.message}"}
 
         response.status = HttpStatus.FORBIDDEN.value()
         response.contentType = MediaType.APPLICATION_JSON_VALUE

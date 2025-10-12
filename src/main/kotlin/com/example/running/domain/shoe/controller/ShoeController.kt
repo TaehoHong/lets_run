@@ -8,9 +8,7 @@ import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.domain.shoe.service.dto.ShoeCreationDto
 import com.example.running.domain.shoe.service.dto.ShoePatchDto
 import com.example.running.helper.authenticateWithUser
-import org.springframework.http.codec.ServerSentEvent
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
 @RequestMapping("/api/v1/shoes")
 @RestController
