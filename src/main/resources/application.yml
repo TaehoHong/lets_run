@@ -19,10 +19,15 @@ spring:
 
 logging:
   level:
+    #    org.hibernate:
+    #      SQL: debug
+    #      orm.jdbc.bind: trace
+
     org.springframework:
       web: DEBUG
       security: DEBUG
       jdbc: DEBUG
+
 
 
 token:

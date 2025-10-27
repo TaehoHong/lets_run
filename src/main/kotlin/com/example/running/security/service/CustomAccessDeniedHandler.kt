@@ -15,21 +15,28 @@ import java.io.IOException
 @Component
 class CustomAccessDeniedHandler(
     private val objectMapper: ObjectMapper,
-): AccessDeniedHandler {
+) : AccessDeniedHandler {
 
-    private val logger = KotlinLogging.logger {  }
+    private val logger = KotlinLogging.logger { }
 
     @Throws(IOException::class)
-    override fun handle(request: HttpServletRequest, response: HttpServletResponse, accessDeniedException: AccessDeniedException) {
+    override fun handle(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        accessDeniedException: AccessDeniedException
+    ) {
 
-        logger.error { "${"error : {}"} ${accessDeniedException.message}"}
+        accessDeniedException.printStackTrace()
+        logger.error { "error : ${accessDeniedException.message}" }
 
         response.status = HttpStatus.FORBIDDEN.value()
         response.contentType = MediaType.APPLICATION_JSON_VALUE
-        response.writer.write(objectMapper.writeValueAsString(
-            ErrorResponse(
-                message = accessDeniedException.message?:"",
+        response.writer.write(
+            objectMapper.writeValueAsString(
+                ErrorResponse(
+                    message = accessDeniedException.message ?: "",
+                )
             )
-        ))
+        )
     }
 }

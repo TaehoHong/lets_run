@@ -33,7 +33,7 @@ class RunningRecordSearchResponse(
     val isUserInput: Boolean,
     val startTimestamp: Long,
 ) {
-    constructor(runningRecordDto: RunningRecordDto): this(
+    constructor(runningRecordDto: RunningRecordDto) : this(
         id = runningRecordDto.id,
         distance = runningRecordDto.distance,
         durationSec = runningRecordDto.durationSec,

@@ -11,14 +11,19 @@ import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
 
 @Repository
-interface RunningRecordRepository: JpaRepository<RunningRecord, Long>, QRunningRecordRepository {
+interface RunningRecordRepository : JpaRepository<RunningRecord, Long>, QRunningRecordRepository {
 
     fun findByIdAndUserId(id: Long, userId: Long): RunningRecord?
 }
 
 interface QRunningRecordRepository {
     fun updateIsEndById(isEnd: Boolean, id: Long)
-    fun getAllByUserIdAndEndDatetimeBetween(userId: Long, start: OffsetDateTime, end: OffsetDateTime): List<RunningRecord>
+    fun getAllByUserIdAndEndDatetimeBetween(
+        userId: Long,
+        start: OffsetDateTime,
+        end: OffsetDateTime
+    ): List<RunningRecord>
+
     fun findAllByCursor(userId: Long, request: RunningRecordSearchRequest): List<RunningRecord>
     fun existsByCursor(userId: Long, cursor: Long?, request: RunningRecordSearchRequest): Boolean
 
@@ -27,7 +32,7 @@ interface QRunningRecordRepository {
 @Repository
 class QRunningRecordRepositoryImpl(
     private val queryFactory: JPAQueryFactory
-): QRunningRecordRepository {
+) : QRunningRecordRepository {
 
     override fun updateIsEndById(isEnd: Boolean, id: Long) {
         queryFactory.update(runningRecord)
@@ -39,13 +44,18 @@ class QRunningRecordRepositoryImpl(
             .execute()
     }
 
-    override fun getAllByUserIdAndEndDatetimeBetween(userId: Long, start: OffsetDateTime, end: OffsetDateTime): List<RunningRecord> {
+    override fun getAllByUserIdAndEndDatetimeBetween(
+        userId: Long,
+        start: OffsetDateTime,
+        end: OffsetDateTime
+    ): List<RunningRecord> {
         return queryFactory.selectFrom(runningRecord)
             .where(
                 runningRecord.user.id.eq(userId),
                 runningRecord.isStatisticIncluded.isTrue,
                 runningRecord.isEnd.isTrue,
-                runningRecord.endDatetime.between(start, end)
+//                runningRecord.startDatetime.between(start, end)
+                runningRecord.startDatetime.between(start, end)
             ).fetch()
     }
 
@@ -66,25 +76,25 @@ class QRunningRecordRepositoryImpl(
             .from(runningRecord)
             .where(getBooleanBuilder(userId, cursor, request))
             .orderBy(runningRecord.id.desc())
-            .fetchFirst()?:false
+            .fetchFirst() ?: false
     }
 
     private fun getBooleanBuilder(userId: Long, cursor: Long?, request: RunningRecordSearchRequest): BooleanBuilder {
         val booleanBuilder = BooleanBuilder()
             .andAnyOf(
-            runningRecord.user.id.eq(userId),
+                runningRecord.user.id.eq(userId),
                 runningRecord.isStatisticIncluded.isTrue,
-        )
+            )
 
-        if(cursor != null) {
+        if (cursor != null) {
             booleanBuilder.and(runningRecord.id.lt(cursor))
         }
 
-        if(request.getStartDateTime() != null) {
+        if (request.getStartDateTime() != null) {
             booleanBuilder.and(runningRecord.startDatetime.goe(request.getStartDateTime()))
         }
 
-        if(request.getEndDateTime() != null) {
+        if (request.getEndDateTime() != null) {
             booleanBuilder.and(runningRecord.startDatetime.loe(request.getEndDateTime()))
         }
 

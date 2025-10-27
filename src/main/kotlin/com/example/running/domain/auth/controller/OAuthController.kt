@@ -1,9 +1,8 @@
 package com.example.running.domain.auth.controller
 
 import com.example.running.domain.auth.controller.dto.TokenResponse
-import com.example.running.domain.auth.service.OauthService
+import com.example.running.domain.auth.service.OAuthService
 import com.example.running.domain.auth.service.UserSignUpService
-import com.example.running.domain.auth.service.dto.OAuthAccountInfo
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.security.service.TokenService
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -17,12 +16,12 @@ import org.springframework.web.bind.annotation.*
 @RestController
 class OAuthController(
     private val objectMapper: ObjectMapper,
-    private val oauthService: OauthService,
+    private val oauthService: OAuthService,
     private val tokenService: TokenService,
     private val userSignUpService: UserSignUpService
 ) {
 
-    private val log = KotlinLogging.logger{}
+    private val log = KotlinLogging.logger {}
 
     @Operation(
         summary = "구글 로그인/회원가입",
@@ -32,17 +31,13 @@ class OAuthController(
     fun getToken(@PathVariable provider: String, @RequestParam code: String): TokenResponse {
         val accountTypeName = AccountTypeName.getByNameIgnoreCase(provider)
 
-        return oauthService.requestToken(accountTypeName, code)
-            .let { oAuthTokenDto ->
-                log.debug { "idToken : ${oAuthTokenDto.idToken}" }
-                tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
-                    .let {
-                        log.debug { "it: $it" }
-                        objectMapper.readValue(it, OAuthAccountInfo::class.java)
-                    }
-            }?.let {
-                userSignUpService.signup(accountTypeName, it)
-            }?.also { log.info { "access token : ${it.accessToken}"} }
-            ?: run { throw RuntimeException("Google Token parse Error")}
+        return runCatching {
+            oauthService.getOAuthAccountInfo(accountTypeName, code)
+                .let {
+                    userSignUpService.signup(accountTypeName, it)
+                }.also { log.info { "access token : ${it.accessToken}" } }
+        }.getOrElse {
+            throw RuntimeException("Google Token parse Error")
+        }
     }
 }

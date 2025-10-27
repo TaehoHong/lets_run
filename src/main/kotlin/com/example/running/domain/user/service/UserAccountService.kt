@@ -24,8 +24,8 @@ class UserAccountService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun save(userId: Long, email: String, password: String?, accountType: AccountTypeName) {
-        userAccountRepository.save(
+    fun save(userId: Long, email: String, password: String? = null, accountType: AccountTypeName): UserAccount {
+        return userAccountRepository.save(
             UserAccount(
                 userId = userId,
                 accountTypeId = accountType.id,
@@ -38,5 +38,10 @@ class UserAccountService(
     @Transactional(readOnly = true)
     fun getByEmail(email: String): UserAccount? {
         return userAccountRepository.findByEmail(email)
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun softDelete(id: Long, userId: Long) {
+        userAccountRepository.updateIsDeleted(true, id, userId)
     }
 }

@@ -4,8 +4,10 @@ import com.example.running.config.properties.Credential
 import com.example.running.config.properties.CredentialProperties
 import com.example.running.config.properties.OAuthProperties
 import com.example.running.config.properties.OAuthUrl
+import com.example.running.domain.auth.service.dto.OAuthAccountInfo
 import com.example.running.domain.auth.service.dto.OAuthTokenDto
 import com.example.running.domain.common.enums.AccountTypeName
+import com.example.running.security.service.TokenService
 import com.example.running.utils.WebClientUtils
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -14,17 +16,26 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.client.WebClientResponseException
 
 @Service
-class OauthService(
+class OAuthService(
     private val oAuthProperties: OAuthProperties,
     private val appleClientSecretService: AppleClientSecretService,
+    private val tokenService: TokenService,
     private val objectMapper: ObjectMapper
 ) {
     private val GRANT_TYPE = "authorization_code"
     private val log = KotlinLogging.logger {}
 
-    fun requestToken(accountType: AccountTypeName, code: String): OAuthTokenDto {
+    fun getOAuthAccountInfo(accountType: AccountTypeName, code: String): OAuthAccountInfo {
+        return requestToken(accountType, code)
+            .let { oAuthTokenDto ->
+                val content = tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
+                objectMapper.readValue(content, OAuthAccountInfo::class.java)
+            }
+    }
 
-        val (tokenUrl, redirectUrl) = getURL(accountType)
+    private fun requestToken(accountType: AccountTypeName, code: String): OAuthTokenDto {
+
+        val (tokenUrl, _) = getURL(accountType)
         val (clientId, clientSecret) = getCredential(accountType)
 
         return LinkedMultiValueMap<String, String>()
@@ -41,12 +52,15 @@ class OauthService(
             }.onSuccess {
                 log.debug { "token response : $it" }
             }.onFailure { exception ->
-                when(exception) {
+                when (exception) {
                     is WebClientResponseException -> {
                         log.error { "request error occur ${exception.responseBodyAsString}" }
                         throw exception
                     }
-                    else -> { throw exception }
+
+                    else -> {
+                        throw exception
+                    }
                 }
             }.getOrNull()
             .let {
@@ -62,7 +76,7 @@ class OauthService(
     }
 
     private fun getCredential(accountType: AccountTypeName): Credential {
-        return when(accountType) {
+        return when (accountType) {
             AccountTypeName.GOOGLE -> CredentialProperties.googleCredential
             AccountTypeName.APPLE -> appleClientSecretService.getCredential()
         }

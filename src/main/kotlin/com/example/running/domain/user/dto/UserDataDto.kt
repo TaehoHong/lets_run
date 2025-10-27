@@ -9,6 +9,7 @@ data class UserDataDto(
     val totalPoint: Int,
     val userAccounts: Set<UserAccountDataDto>,
     val avatarId: Long,
+    val haveRunningRecord: Boolean,
     val equippedItems: MutableList<EquippedItemDto> = mutableListOf()
 ) {
     constructor(
@@ -17,15 +18,18 @@ data class UserDataDto(
         authorityType: AuthorityType,
         totalPoint: Int,
         userAccounts: Set<UserAccountDataDto>,
-        avatarId: Long): this(
-            id = id,
-            name = name,
-            authorityType = authorityType,
-            totalPoint = totalPoint,
-            userAccounts = userAccounts,
-            avatarId = avatarId,
-            equippedItems = mutableListOf()
-        )
+        avatarId: Long,
+        haveRunningRecord: Boolean
+    ) : this(
+        id = id,
+        name = name,
+        authorityType = authorityType,
+        totalPoint = totalPoint,
+        userAccounts = userAccounts,
+        avatarId = avatarId,
+        haveRunningRecord = haveRunningRecord,
+        equippedItems = mutableListOf()
+    )
 }
 
 
