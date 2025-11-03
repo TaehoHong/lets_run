@@ -30,19 +30,30 @@ class AuthenticationFilter(
         response: HttpServletResponse,
         filterChain: FilterChain
     ) {
-        log.info{"JwtAuthorizationFilter"}
+        val requestUri = request.requestURI
+        val requestMethod = request.method
+
+        log.debug { "AuthenticationFilter - Processing: $requestMethod $requestUri" }
+
         val accessToken = request.getHeader(JwtProperties.ACCESS_TOKEN_HEADER)
         val refreshToken = request.getHeader(JwtProperties.REFRESH_TOKEN_HEADER)
 
         if (accessToken != null) {
+            log.debug { "AccessToken found for: $requestMethod $requestUri" }
             verifyToken(accessToken, response)
 
             val token = accessToken.replace(JwtProperties.TOKEN_PREFIX,"")
 
             val authentication = SecurityContextHolder.getContext().authentication
             if(authentication == null) {
-                SecurityContextHolder.getContext().authentication = getAuthentication(token)
+                val auth = getAuthentication(token)
+                SecurityContextHolder.getContext().authentication = auth
+                log.debug { "Authentication set - Principal: ${auth.principal}, Authorities: ${auth.authorities}" }
+            } else {
+                log.debug { "Authentication already exists: ${authentication.principal}" }
             }
+        } else {
+            log.debug { "No AccessToken for: $requestMethod $requestUri" }
         }
 
         filterChain.doFilter(request, response)
@@ -64,10 +75,11 @@ class AuthenticationFilter(
         runCatching {
             tokenService.verify(token)
         }.onFailure { exception ->
+            log.error(exception) { "Token verification failed: ${exception.message}" }
 
             val errorResponse = when (exception) {
                 is TokenException -> ErrorResponse(message = exception.message)
-                else -> ErrorResponse(message = "Unknown error with verify Token")
+                else -> ErrorResponse(message = "Unknown error with verify Token: ${exception.message}")
             }
 
             response.status = HttpServletResponse.SC_UNAUTHORIZED

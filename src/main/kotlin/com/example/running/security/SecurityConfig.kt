@@ -42,6 +42,8 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET,"/api/v1/users/*").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/verification/email").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/accounts").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/users/accounts/*").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points").authenticated()
 
