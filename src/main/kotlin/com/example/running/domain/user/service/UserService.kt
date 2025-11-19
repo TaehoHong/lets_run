@@ -9,6 +9,7 @@ import com.example.running.domain.user.repository.UserRepository
 import com.example.running.domain.user.service.dto.UserDto
 import com.example.running.exception.ApiError
 import com.example.running.exception.ApiException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -23,17 +24,15 @@ class UserService(
     @Transactional(rollbackFor = [Exception::class])
     fun save(userCreationDto: UserCreationDto): User {
 
-        val user = userCreationDto.let {
-            User(
-                nickname = it.nickname,
-                authorityType = AuthorityType.USER
-            )
-        }.let {
+        val user = User(
+            nickname = userCreationDto.nickname,
+            authorityType = AuthorityType.USER
+        ).let {
             userRepository.save(it)
         }
 
         userAccountService.save(
-            userId = user.id,
+            user = user,
             email = userCreationDto.email,
             password = userCreationDto.password,
             accountType = userCreationDto.accountType
@@ -51,5 +50,10 @@ class UserService(
     fun getUserDto(id: Long): UserDto {
         return userRepository.findUserDto(id)
             ?:run{ throw ApiException(ApiError.NOT_FOUND_USER) }
+    }
+
+    fun getById(id: Long): User {
+        return userRepository.findByIdOrNull(id)
+            ?:run { throw ApiException(ApiError.NOT_FOUND_USER) }
     }
 }

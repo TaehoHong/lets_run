@@ -36,8 +36,8 @@ class UserAccount(
     @Column(name = "id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     val id: Long = 0
 
-    constructor(userId: Long, accountTypeId: Short, email: String, password: String?): this(
-        user = User(id = userId),
+    constructor(user: User, accountTypeId: Short, email: String, password: String?): this(
+        user = user,
         accountType = AccountType(id = accountTypeId),
         email = email,
         password = password

@@ -1,6 +1,7 @@
 package com.example.running.domain.user.service
 
 import com.example.running.domain.common.enums.AccountTypeName
+import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.user.repository.UserAccountRepository
 import com.example.running.utils.alsoIfTrue
@@ -24,10 +25,10 @@ class UserAccountService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun save(userId: Long, email: String, password: String? = null, accountType: AccountTypeName): UserAccount {
+    fun save(user: User, email: String, password: String? = null, accountType: AccountTypeName): UserAccount {
         return userAccountRepository.save(
             UserAccount(
-                userId = userId,
+                user = user,
                 accountTypeId = accountType.id,
                 email = email,
                 password = password?.let { passwordEncoder.encode(it) }
