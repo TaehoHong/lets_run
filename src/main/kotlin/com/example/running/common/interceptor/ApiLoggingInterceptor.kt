@@ -20,12 +20,15 @@ class ApiLoggingInterceptor: HandlerInterceptor {
     val log = KotlinLogging.logger {}
 
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
-        (request as MultipleReadableRequestWrapper).also {
-            log.info { "Time: ${OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}" }
-            log.info { "Requests: ${request.method + " - " + request.requestURL + if(request.queryString != null)  "?" + request.queryString else ""}" }
-            log.info { "AccessToken: ${request.getHeader(JwtProperties.ACCESS_TOKEN_HEADER)}" }
-            log.info { "RefreshToken: ${request.getHeader(JwtProperties.REFRESH_TOKEN_HEADER)}" }
+        log.info { "Time: ${OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}" }
+        log.info { "Requests: ${request.method} - ${request.requestURL}${if (request.queryString != null) "?" + request.queryString else ""}" }
+        log.info { "AccessToken: ${request.getHeader(JwtProperties.ACCESS_TOKEN_HEADER)}" }
+        log.info { "RefreshToken: ${request.getHeader(JwtProperties.REFRESH_TOKEN_HEADER)}" }
+
+        if (request is MultipleReadableRequestWrapper) {
             log.info { "Request Body: ${objectMapper.readTree(request.contents.toString(charset(request.characterEncoding)))}" }
+        } else {
+            log.info { "Request Body: [Multipart request - body not logged]" }
         }
 
         return true

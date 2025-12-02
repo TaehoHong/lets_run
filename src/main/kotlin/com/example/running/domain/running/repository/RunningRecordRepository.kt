@@ -81,10 +81,9 @@ class QRunningRecordRepositoryImpl(
 
     private fun getBooleanBuilder(userId: Long, cursor: Long?, request: RunningRecordSearchRequest): BooleanBuilder {
         val booleanBuilder = BooleanBuilder()
-            .andAnyOf(
-                runningRecord.user.id.eq(userId),
-                runningRecord.isStatisticIncluded.isTrue,
-            )
+            .and(runningRecord.user.id.eq(userId))
+            .and(runningRecord.isStatisticIncluded.isTrue)
+            .and(runningRecord.isEnd.isTrue)
 
         if (cursor != null) {
             booleanBuilder.and(runningRecord.id.lt(cursor))

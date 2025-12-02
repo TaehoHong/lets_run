@@ -53,13 +53,18 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
                 brand = shoePatchDto.brand,
                 model = shoePatchDto.model,
                 targetDistance = shoePatchDto.targetDistance,
-                isMain = shoePatchDto.isMain,
                 isEnabled = shoePatchDto.isEnabled,
                 isDeleted = shoePatchDto.isDeleted
             )
         }.let {
             shoeRepository.save(it)
         }.let { ShoeDto(it) }
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateToMain(userId: Long, id: Long) {
+        shoeRepository.updateIsMainByUserId(userId, false)
+        shoeRepository.updateIsMainByIdAndUserId(id, userId, true)
     }
 
     private fun getById(id: Long): Shoe {

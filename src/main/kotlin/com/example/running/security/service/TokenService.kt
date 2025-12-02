@@ -35,27 +35,27 @@ class TokenService {
 
 
     @Transactional
-    fun generateTokens(userId: Long, nickname: String, authorityType: AuthorityType): TokenResponse {
+    fun generateTokens(userId: Long, nickname: String, isAgreedOnTerms: Boolean, authorityType: AuthorityType): TokenResponse {
         return TokenResponse(
             userId = userId,
             nickname = nickname,
-            accessToken = generateAccessToken(userId, nickname, authorityType),
+            accessToken = generateAccessToken(userId, nickname, isAgreedOnTerms, authorityType),
             refreshToken = generateRefreshToken(userId, nickname, authorityType)
         )
     }
 
 
-    private fun generateAccessToken(userId: Long, nickname: String, authorityType: AuthorityType) =
-        generateToken(userId, nickname, authorityType, ACCESS_TOKEN_EXPIRATION)
+    private fun generateAccessToken(userId: Long, nickname: String, isAgreedOnTerms: Boolean, authorityType: AuthorityType) =
+        generateToken(userId, nickname, isAgreedOnTerms, authorityType, ACCESS_TOKEN_EXPIRATION)
 
     private fun generateRefreshToken(userId: Long, nickname: String, authorityType: AuthorityType) =
-        generateToken(userId, nickname, authorityType, REFRESH_TOKEN_EXPIRATION)
+        generateToken(userId, nickname, false, authorityType, REFRESH_TOKEN_EXPIRATION)
 
 
 
-    private fun generateToken(userId: Long, nickname: String, authorityType: AuthorityType, tokenExpirationTime: Long): String {
+    private fun generateToken(userId: Long, nickname: String, isAgreedOnTerms: Boolean, authorityType: AuthorityType, tokenExpirationTime: Long): String {
 
-        val claims = createClaims(userId, nickname, authorityType)
+        val claims = createClaims(userId, nickname, isAgreedOnTerms, authorityType)
 
         val now = Date()
         val expiredDate = Date(now.time + (tokenExpirationTime * 1000))
@@ -69,12 +69,14 @@ class TokenService {
     }
 
 
-    private fun createClaims(userId: Long, nickname: String, authorityType: AuthorityType) =
+    private fun createClaims(userId: Long, nickname: String, isAgreedOnTerms: Boolean, authorityType: AuthorityType) =
         Jwts.claims()
             .id(userId.toString())
             .subject(nickname)
             .also {
                 it.add("role", authorityType.role)
+                it.add("isAgreedOnTerms", isAgreedOnTerms)
+
             }.build()
 
     fun decodeTokenPayload(token: String): String? {

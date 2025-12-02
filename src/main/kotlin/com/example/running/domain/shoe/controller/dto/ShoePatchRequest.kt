@@ -4,7 +4,6 @@ class ShoePatchRequest (
     val brand: String? = null,
     val model: String? = null,
     val targetDistance: Int? = null,
-    val isMain: Boolean? = null,
     val isEnabled: Boolean? = null,
     val isDeleted: Boolean? = null
 )

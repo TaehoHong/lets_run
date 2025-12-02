@@ -45,4 +45,9 @@ class UserAccountService(
     fun softDelete(id: Long, userId: Long) {
         userAccountRepository.updateIsDeleted(true, id, userId)
     }
+
+    @Transactional
+    fun disableAllByUserId(userId: Long) {
+        userAccountRepository.disableAllByUserId(userId)
+    }
 }

@@ -16,6 +16,8 @@ interface ShoeRepository: JpaRepository<Shoe, Long>, QShoeRepository {
 interface QShoeRepository {
     fun findAll(userId: Long, isEnabled: Boolean?, cursor: Long?, size: Int): List<Shoe>
     fun hasNext(userId: Long, isEnabled: Boolean?, id: Long): Boolean
+    fun updateIsMainByUserId(userId: Long, isMain: Boolean): Long
+    fun updateIsMainByIdAndUserId(id:Long, userId: Long, isMain: Boolean): Long
 }
 
 
@@ -45,5 +47,21 @@ class QShoeRepositoryImpl(private val queryFactory: JPAQueryFactory): QShoeRepos
             id?.let { and(shoe.id.lt(it)) }
             isEnabled?.let { and(shoe.isEnabled.eq(it)) }
         }
+    }
+
+    override fun updateIsMainByUserId(userId: Long, isMain: Boolean): Long {
+        return queryFactory.update(shoe)
+            .set(shoe.isMain, isMain)
+            .where(shoe.user.id.eq(userId))
+            .execute()
+    }
+
+    override fun updateIsMainByIdAndUserId(id: Long, userId: Long, isMain: Boolean): Long {
+        return queryFactory.update(shoe)
+            .set(shoe.isMain, isMain)
+            .where(
+                shoe.id.eq(id),
+                shoe.user.id.eq(userId)
+            ).execute()
     }
 }

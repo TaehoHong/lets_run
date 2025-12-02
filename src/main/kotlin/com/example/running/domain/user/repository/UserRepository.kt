@@ -52,6 +52,7 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                         UserDataDto::class.java,
                         user.id,
                         user.nickname,
+                        user.profileImageUrl,
                         user.authorityType,
                         userPoint.point,
                         set(
@@ -102,6 +103,7 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                 UserDto::class.java,
                 user.id,
                 user.nickname,
+                user.authorityType
             )
         ).from(user)
             .where(

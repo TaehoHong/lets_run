@@ -5,6 +5,7 @@ import com.example.running.domain.common.enums.AuthorityType
 data class UserDataDto(
     val id: Long,
     val name: String,
+    val profileImageUrl: String?,
     val authorityType: AuthorityType,
     val totalPoint: Int,
     val userAccounts: Set<UserAccountDataDto>,
@@ -15,6 +16,7 @@ data class UserDataDto(
     constructor(
         id: Long,
         name: String,
+        profileImageUrl: String?,
         authorityType: AuthorityType,
         totalPoint: Int,
         userAccounts: Set<UserAccountDataDto>,
@@ -23,6 +25,7 @@ data class UserDataDto(
     ) : this(
         id = id,
         name = name,
+        profileImageUrl = profileImageUrl,
         authorityType = authorityType,
         totalPoint = totalPoint,
         userAccounts = userAccounts,

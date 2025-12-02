@@ -50,11 +50,17 @@ class ShoeController(private val shoeService: ShoeService) {
                     brand = shoePatchRequest.brand,
                     model = shoePatchRequest.model,
                     targetDistance = shoePatchRequest.targetDistance,
-                    isMain = shoePatchRequest.isMain,
                     isEnabled = shoePatchRequest.isEnabled,
                     isDeleted = shoePatchRequest.isDeleted
                 )
             ).let { ShoeResponse(it) }
+        }
+    }
+
+    @PostMapping("/{id}/main")
+    fun updateToMain(@PathVariable id: Long) {
+        return authenticateWithUser { userId ->
+            shoeService.updateToMain(userId, id)
         }
     }
 }

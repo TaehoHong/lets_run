@@ -4,8 +4,8 @@ import com.example.running.domain.auth.controller.dto.TokenResponse
 import com.example.running.domain.auth.service.OAuthService
 import com.example.running.domain.auth.service.UserSignUpService
 import com.example.running.domain.common.enums.AccountTypeName
+import com.example.running.domain.user.service.UserAgreementService
 import com.example.running.security.service.TokenService
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
 import org.springframework.web.bind.annotation.*
@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/v1/oauth/{provider}")
 @RestController
 class OAuthController(
-    private val objectMapper: ObjectMapper,
     private val oauthService: OAuthService,
     private val tokenService: TokenService,
-    private val userSignUpService: UserSignUpService
+    private val userSignUpService: UserSignUpService,
+    private val userAgreementService: UserAgreementService
 ) {
 
     private val log = KotlinLogging.logger {}
@@ -35,9 +35,16 @@ class OAuthController(
             oauthService.getOAuthAccountInfo(accountTypeName, code)
                 .let {
                     userSignUpService.signup(accountTypeName, it)
+                }.let { userAccount ->
+                    tokenService.generateTokens(
+                        userId = userAccount.user.id,
+                        nickname = userAccount.user.nickname,
+                        isAgreedOnTerms = userAgreementService.isAllTermsAgreed(userAccount.user.id),
+                        authorityType = userAccount.user.authorityType
+                    )
                 }.also { log.info { "access token : ${it.accessToken}" } }
         }.getOrElse {
-            throw RuntimeException("Google Token parse Error")
+            throw RuntimeException(it.message)
         }
     }
 }

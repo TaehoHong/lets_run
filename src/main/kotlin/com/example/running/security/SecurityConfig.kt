@@ -3,7 +3,6 @@ package com.example.running.security
 import com.example.running.security.filter.AuthenticationFilter
 import com.example.running.security.service.CustomAccessDeniedHandler
 import com.example.running.security.service.JwtAuthenticationEntryPoint
-import com.example.running.security.service.TokenService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -40,10 +39,14 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "healthy-check", "active-type").permitAll()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/users/me").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET,"/api/v1/users/*").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/verification/email").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/accounts").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/users/accounts/*").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/users/agreement").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points").authenticated()
 
@@ -74,6 +77,9 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/shoes").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/shoes").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/shoes/*").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/shoes/*/main").authenticated()
+
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/terms").authenticated()
 
                 authorizeHttpRequests.anyRequest().denyAll()
             }

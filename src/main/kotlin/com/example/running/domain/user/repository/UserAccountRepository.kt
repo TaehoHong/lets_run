@@ -16,6 +16,7 @@ interface UserAccountRepository : JpaRepository<UserAccount, Long>, QUserAccount
 
 interface QUserAccountRepository {
     fun updateIsDeleted(isDeleted: Boolean, id: Long, userId: Long): Boolean
+    fun disableAllByUserId(userId: Long): Long
 }
 
 @Repository
@@ -30,5 +31,13 @@ class UserAccountRepositoryImpl(
                 userAccount.id.eq(id),
                 userAccount.user.id.eq(userId)
             ).execute() > 0
+    }
+
+    override fun disableAllByUserId(userId: Long): Long {
+        return queryFactory.update(userAccount)
+            .set(userAccount.isEnabled, false)
+            .set(userAccount.isDeleted, true)
+            .where(userAccount.user.id.eq(userId))
+            .execute()
     }
 }

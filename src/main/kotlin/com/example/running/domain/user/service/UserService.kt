@@ -2,7 +2,6 @@ package com.example.running.domain.user.service
 
 import com.example.running.domain.auth.service.dto.UserCreationDto
 import com.example.running.domain.common.enums.AuthorityType
-import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.repository.UserRepository
@@ -10,14 +9,12 @@ import com.example.running.domain.user.service.dto.UserDto
 import com.example.running.exception.ApiError
 import com.example.running.exception.ApiException
 import org.springframework.data.repository.findByIdOrNull
-import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UserService(
     private val userAccountService: UserAccountService,
-    private val userPointService: UserPointService,
     private val userRepository: UserRepository
 ) {
 
@@ -37,8 +34,6 @@ class UserService(
             password = userCreationDto.password,
             accountType = userCreationDto.accountType
         )
-        userPointService.save(userId = user.id)
-
         return user
     }
 
@@ -55,5 +50,26 @@ class UserService(
     fun getById(id: Long): User {
         return userRepository.findByIdOrNull(id)
             ?:run { throw ApiException(ApiError.NOT_FOUND_USER) }
+    }
+
+    /**
+     * 프로필 업데이트
+     */
+    @Transactional
+    fun updateProfile(userId: Long, nickname: String?, profileImageUrl: String?): User {
+        val user = getById(userId)
+        user.updateProfile(nickname, profileImageUrl)
+        return user
+    }
+
+    /**
+     * 회원 탈퇴 (익명화 처리)
+     */
+    @Transactional
+    fun withdraw(userId: Long) {
+        val user = getById(userId)
+        user.withdraw()
+        // 연결된 계정도 비활성화
+        userAccountService.disableAllByUserId(userId)
     }
 }
