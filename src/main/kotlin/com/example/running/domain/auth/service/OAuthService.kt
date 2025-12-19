@@ -4,7 +4,7 @@ import com.example.running.config.properties.Credential
 import com.example.running.config.properties.CredentialProperties
 import com.example.running.config.properties.OAuthProperties
 import com.example.running.config.properties.OAuthUrl
-import com.example.running.domain.auth.service.dto.OAuthAccountInfo
+import com.example.running.domain.auth.service.dto.OAuthAccountInfoDto
 import com.example.running.domain.auth.service.dto.OAuthTokenDto
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.security.service.TokenService
@@ -25,11 +25,11 @@ class OAuthService(
     private val GRANT_TYPE = "authorization_code"
     private val log = KotlinLogging.logger {}
 
-    fun getOAuthAccountInfo(accountType: AccountTypeName, code: String): OAuthAccountInfo {
+    fun getOAuthAccountInfo(accountType: AccountTypeName, code: String): OAuthAccountInfoDto {
         return requestToken(accountType, code)
             .let { oAuthTokenDto ->
                 val content = tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
-                objectMapper.readValue(content, OAuthAccountInfo::class.java)
+                objectMapper.readValue(content, OAuthAccountInfoDto::class.java)
             }
     }
 

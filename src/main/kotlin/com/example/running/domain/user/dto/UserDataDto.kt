@@ -11,6 +11,7 @@ data class UserDataDto(
     val userAccounts: Set<UserAccountDataDto>,
     val avatarId: Long,
     val haveRunningRecord: Boolean,
+    val hairColor: String,
     val equippedItems: MutableList<EquippedItemDto> = mutableListOf()
 ) {
     constructor(
@@ -21,7 +22,8 @@ data class UserDataDto(
         totalPoint: Int,
         userAccounts: Set<UserAccountDataDto>,
         avatarId: Long,
-        haveRunningRecord: Boolean
+        haveRunningRecord: Boolean,
+        hairColor: String
     ) : this(
         id = id,
         name = name,
@@ -31,6 +33,7 @@ data class UserDataDto(
         userAccounts = userAccounts,
         avatarId = avatarId,
         haveRunningRecord = haveRunningRecord,
+        hairColor = hairColor,
         equippedItems = mutableListOf()
     )
 }

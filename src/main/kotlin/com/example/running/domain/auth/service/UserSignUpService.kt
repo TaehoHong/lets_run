@@ -1,6 +1,6 @@
 package com.example.running.domain.auth.service
 
-import com.example.running.domain.auth.service.dto.OAuthAccountInfo
+import com.example.running.domain.auth.service.dto.OAuthAccountInfoDto
 import com.example.running.domain.auth.service.dto.UserCreationDto
 import com.example.running.domain.avatar.service.AvatarService
 import com.example.running.domain.common.enums.AccountTypeName
@@ -25,12 +25,12 @@ class UserSignUpService(
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun signup(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfo): UserAccount {
+    fun signup(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfoDto): UserAccount {
         return (userAccountService.getByEmail(oAuthAccountInfo.email)
             ?: createUserAndGetUserAccount(accountType, oAuthAccountInfo))
     }
 
-    private fun createUserAndGetUserAccount(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfo): UserAccount {
+    private fun createUserAndGetUserAccount(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfoDto): UserAccount {
         return oAuthAccountInfo.let {
             UserCreationDto(
                 email = it.email,

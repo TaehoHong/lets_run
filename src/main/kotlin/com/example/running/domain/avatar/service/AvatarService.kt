@@ -58,7 +58,10 @@ class AvatarService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun addOrChangeItems(avatarId: Long, itemIds: List<Long>): AvatarDto {
+    fun addOrChangeItems(avatarId: Long, itemIds: List<Long>, hairColor: String? = null): AvatarDto {
+
+        // 헤어 색상 업데이트
+        hairColor?.let { updateHairColor(avatarId, it) }
 
         itemService.getAllItemTypeId(itemIds)
             .let {
@@ -68,5 +71,17 @@ class AvatarService(
         avatarUserItemService.saveAll(avatarId, itemIds)
 
         return getMainAvatar(avatarId)
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateHairColor(avatarId: Long, hairColor: String) {
+        // HEX 색상 형식 검증 (#FFFFFF 또는 #FFF)
+        require(hairColor.matches(Regex("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"))) {
+            "Invalid hair color format. Expected HEX format like #FFFFFF"
+        }
+
+        avatarRepository.findById(avatarId)
+            .orElseThrow { IllegalArgumentException("Avatar not found") }
+            .apply { this.hairColor = hairColor }
     }
 }

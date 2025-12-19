@@ -18,12 +18,16 @@ class Avatar (
     val isMain: Boolean,
 
     @Column(name = "order_index", nullable = false, columnDefinition = "TINYINT UNSIGNED")
-    val orderIndex: Short
+    val orderIndex: Short,
+
+    @Column(name = "hair_color", nullable = false, length = 7, columnDefinition = "VARCHAR(7)")
+    var hairColor: String = "#8B4513"
 ) {
     constructor(id: Long): this(
         id = id,
         user = User(0),
         isMain = true,
-        orderIndex = 0
+        orderIndex = 0,
+        hairColor = "#8B4513"
     )
 }

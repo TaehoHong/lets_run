@@ -6,6 +6,7 @@ class AvatarResponse(
     val id: Long,
     val userId: Long,
     val isMain: Boolean,
+    val hairColor: String,
     val avatarItems: List<AvatarItemResponse>
 ) {
 
@@ -13,6 +14,7 @@ class AvatarResponse(
         id = avatarDto.id,
         userId = avatarDto.userId,
         isMain = avatarDto.isMain,
+        hairColor = avatarDto.hairColor,
         avatarDto.avatarItemDtoList.map { AvatarItemResponse(it) }
     )
 }

@@ -81,6 +81,14 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/terms").authenticated()
 
+                // League
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/current").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/profile").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/league/join").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/result").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/league/result/confirm").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/history").authenticated()
+
                 authorizeHttpRequests.anyRequest().denyAll()
             }
             .exceptionHandling{ handling ->

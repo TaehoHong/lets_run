@@ -42,7 +42,7 @@ class AvatarController(
         }
     }
 
-    @ApiResponse(description = "아이템 구매후 바로 장착할때 사용")
+    @ApiResponse(description = "아이템 구매후 바로 장착할때 사용, 헤어 색상 변경 포함")
     @PostMapping("/{id}/items")
     fun saveItem(@PathVariable id: Long, @RequestBody request: AvatarItemRequest): AvatarResponse {
 
@@ -52,7 +52,23 @@ class AvatarController(
         )
 
         return AvatarResponse(
-            avatarService.addOrChangeItems(id, request.itemIds)
+            avatarService.addOrChangeItems(id, request.itemIds, request.hairColor)
+        )
+    }
+
+    @ApiResponse(description = "헤어 색상만 변경")
+    @PutMapping("/{id}/hair-color")
+    fun updateHairColor(@PathVariable id: Long, @RequestBody hairColor: String): AvatarResponse {
+
+        avatarService.verifyAvatarExists(
+            userId = JwtPayloadParser.getUserId(),
+            avatarId = id
+        )
+
+        avatarService.updateHairColor(id, hairColor)
+
+        return AvatarResponse(
+            avatarService.getMainAvatar(JwtPayloadParser.getUserId())
         )
     }
 

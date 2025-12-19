@@ -69,7 +69,8 @@ class QUserRepositoryImpl(private val queryFactory: JPAQueryFactory) : QUserRepo
                             .where(
                                 runningRecord.user.id.eq(user.id),
                                 runningRecord.isStatisticIncluded.eq(true)
-                            ).exists()
+                            ).exists(),
+                        avatar.hairColor
                     )
                 )
             )[0].also { dto ->

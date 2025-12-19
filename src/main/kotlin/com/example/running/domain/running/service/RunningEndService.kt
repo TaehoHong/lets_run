@@ -1,5 +1,6 @@
 package com.example.running.domain.running.service
 
+import com.example.running.domain.league.service.LeagueService
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
@@ -11,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class RunningEndService(
     private val runningRecordService: RunningRecordService,
-    private val userPointService: UserPointService
+    private val userPointService: UserPointService,
+    private val leagueService: LeagueService
 ) {
 
 
@@ -37,6 +39,11 @@ class RunningEndService(
                 pointTypeId = PointTypeName.RUNNING.id
             )
         )
+
+        // 리그 거리 업데이트
+        updateRunningDto.distance?.let { distance ->
+            leagueService.addRunningDistance(updateRunningDto.userId, distance)
+        }
 
         return EndRunningDto(runningRecord, userPoint.point)
     }
