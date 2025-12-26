@@ -13,9 +13,8 @@ import org.springframework.transaction.annotation.Transactional
 class RunningEndService(
     private val runningRecordService: RunningRecordService,
     private val userPointService: UserPointService,
-    private val leagueService: LeagueService
+    private val leagueService: LeagueService,
 ) {
-
 
     @Transactional(rollbackFor = [Exception::class])
     fun end(updateRunningDto: RunningRecordUpdateDto): EndRunningDto {
@@ -31,19 +30,24 @@ class RunningEndService(
             )
         )
 
-        val userPoint = userPointService.updatePoint(
+        // 기본 러닝 포인트 지급
+        val totalEarnedPoints = calculatePoint(updateRunningDto.distance ?: 0)
+        userPointService.updatePoint(
             PointUsageDto(
                 userId = updateRunningDto.userId,
                 runningRecordId = updateRunningDto.runningRecordId,
-                point = calculatePoint(updateRunningDto.distance?:0),
+                point = totalEarnedPoints,
                 pointTypeId = PointTypeName.RUNNING.id
             )
         )
 
         // 리그 거리 업데이트
-        updateRunningDto.distance?.let { distance ->
-            leagueService.addRunningDistance(updateRunningDto.userId, distance)
+        updateRunningDto.distance?.let { dist ->
+            leagueService.addRunningDistance(updateRunningDto.userId, dist)
         }
+
+        // 총 획득 포인트 (기본 + 보너스)
+        val userPoint = userPointService.getOrCreateByUserId(updateRunningDto.userId)
 
         return EndRunningDto(runningRecord, userPoint.point)
     }

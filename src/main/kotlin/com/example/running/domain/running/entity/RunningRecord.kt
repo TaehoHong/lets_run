@@ -6,6 +6,7 @@ import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Entity
 class RunningRecord(
@@ -49,7 +50,7 @@ class RunningRecord(
     var isEnd: Boolean = false,
 
     @Column(name = "start_datetime", nullable = false, columnDefinition = "DATETIME")
-    var startDatetime: OffsetDateTime = OffsetDateTime.now(),
+    var startDatetime: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
 
     @Column(name = "end_datetime", columnDefinition = "DATETIME")
     var endDatetime: OffsetDateTime? = null

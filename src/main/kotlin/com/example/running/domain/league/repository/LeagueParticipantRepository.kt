@@ -7,30 +7,30 @@ import com.example.running.domain.league.entity.QLeagueSeason
 import com.example.running.domain.user.entity.QUser
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 
 @Repository
 interface LeagueParticipantRepository : JpaRepository<LeagueParticipant, Long>, QLeagueParticipantRepository {
 
     fun findByGroupIdOrderByTotalDistanceDescDistanceAchievedAtAsc(groupId: Long): List<LeagueParticipant>
 
-    fun findByGroupIdAndUserId(groupId: Long, userId: Long): LeagueParticipant?
-
-    @Query("SELECT p FROM LeagueParticipant p WHERE p.group.id = :groupId AND p.isBot = false")
-    fun findRealParticipantsByGroupId(@Param("groupId") groupId: Long): List<LeagueParticipant>
+    @Query("SELECT p FROM LeagueParticipant p WHERE p.group.id = :groupId AND p.isBot = true")
+    fun findBotsByGroupId(@Param("groupId") groupId: Long): List<LeagueParticipant>
 
     @Query("SELECT COUNT(p) FROM LeagueParticipant p WHERE p.group.id = :groupId")
     fun countByGroupId(@Param("groupId") groupId: Long): Int
 
+    @Query("SELECT COUNT(p) FROM LeagueParticipant p WHERE p.group.id = :groupId AND p.isBot = false")
+    fun countRealParticipantsByGroupId(@Param("groupId") groupId: Long): Int
+
     @Query("SELECT AVG(p.totalDistance) FROM LeagueParticipant p WHERE p.group.season.id = :seasonId AND p.group.tier.id = :tierId AND p.isBot = false")
     fun findAverageDistanceBySeasonAndTier(@Param("seasonId") seasonId: Long, @Param("tierId") tierId: Int): Double?
 
-    @Modifying
-    @Query("UPDATE LeagueParticipant p SET p.totalDistance = p.totalDistance + :distance, p.distanceAchievedAt = CURRENT_TIMESTAMP WHERE p.id = :participantId")
-    fun addDistance(@Param("participantId") participantId: Long, @Param("distance") distance: Long)
+    @Query("SELECT p FROM LeagueParticipant p WHERE p.group.season.id = :seasonId AND p.isBot = false AND p.promotionStatus IS NOT NULL")
+    fun findParticipantsWithResultBySeasonId(@Param("seasonId") seasonId: Long): List<LeagueParticipant>
 }
 
 interface QLeagueParticipantRepository {
@@ -38,6 +38,7 @@ interface QLeagueParticipantRepository {
     fun findParticipantsByGroupIdWithRanking(groupId: Long, cursor: Long?, size: Int): List<LeagueParticipant>
     fun findUncheckedResultByUserId(userId: Long): LeagueParticipant?
     fun findHistoryByUserId(userId: Long, cursor: Long?, size: Int): List<LeagueParticipant>
+    fun findBotsToUpdateBySlot(seasonId: Long, slot: Int, today: LocalDate): List<LeagueParticipant>
 }
 
 class QLeagueParticipantRepositoryImpl(
@@ -126,5 +127,25 @@ class QLeagueParticipantRepositoryImpl(
         }
 
         return query.fetch()
+    }
+
+    /**
+     * 특정 슬롯의 업데이트 대상 봇 조회
+     * - 해당 시즌의 봇
+     * - 해당 슬롯에 배정된 봇
+     * - 오늘 아직 업데이트되지 않은 봇
+     */
+    override fun findBotsToUpdateBySlot(seasonId: Long, slot: Int, today: LocalDate): List<LeagueParticipant> {
+        return queryFactory
+            .selectFrom(participant)
+            .join(participant.group, group).fetchJoin()
+            .where(
+                group.season.id.eq(seasonId),
+                participant.isBot.isTrue,
+                participant.scheduledUpdateSlot.eq(slot),
+                participant.lastBotUpdateDate.isNull
+                    .or(participant.lastBotUpdateDate.ne(today))
+            )
+            .fetch()
     }
 }

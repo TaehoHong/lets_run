@@ -3,22 +3,29 @@ package com.example.running.domain.league.service
 import com.example.running.domain.league.entity.LeagueParticipant
 import com.example.running.domain.league.entity.LeagueSeason
 import com.example.running.domain.league.enums.LeagueTierType
+import com.example.running.domain.league.enums.SeasonState
 import com.example.running.domain.league.repository.LeagueParticipantRepository
+import com.example.running.domain.league.repository.UserLeagueInfoRepository
 import com.example.running.domain.league.service.dto.CurrentLeagueDto
 import com.example.running.domain.league.service.dto.LeagueHistoryDto
 import com.example.running.domain.league.service.dto.LeagueProfileDto
 import com.example.running.domain.league.service.dto.LeagueResultDto
 import com.example.running.domain.user.repository.UserRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
+private val logger = KotlinLogging.logger {}
 
 @Service
 class LeagueService(
     private val leagueSeasonService: LeagueSeasonService,
     private val leagueGroupService: LeagueGroupService,
     private val leagueParticipantService: LeagueParticipantService,
+    private val leagueSettlementService: LeagueSettlementService,
     private val userLeagueInfoService: UserLeagueInfoService,
     private val leagueParticipantRepository: LeagueParticipantRepository,
+    private val userLeagueInfoRepository: UserLeagueInfoRepository,
     private val userRepository: UserRepository
 ) {
 
@@ -63,14 +70,16 @@ class LeagueService(
 
     /**
      * 유저를 리그에 참가시킴 (신규 유저 또는 시즌 시작 시)
+     * 활성화된 시즌이 없으면 자동으로 새 시즌을 생성
      */
     @Transactional(rollbackFor = [Exception::class])
     fun joinLeague(userId: Long): LeagueParticipant {
         val user = userRepository.findById(userId)
             .orElseThrow { RuntimeException("유저를 찾을 수 없습니다: $userId") }
 
+        // 활성 시즌이 없으면 자동으로 새 시즌 생성
         val season = leagueSeasonService.getCurrentSeason()
-            ?: throw RuntimeException("현재 활성화된 시즌이 없습니다")
+            ?: leagueSeasonService.createNewSeason()
 
         // 이미 참가 중인지 확인
         val existingParticipant = leagueParticipantService.getCurrentParticipant(userId)
@@ -95,6 +104,9 @@ class LeagueService(
 
     /**
      * 러닝 기록 후 거리 업데이트
+     *
+     * AUDITING 상태(지연 업로드 기간)에서는 순위 재계산 수행
+     * - Soft Lock 적용: 기존 승격/유지/환생 유저는 보호
      */
     @Transactional(rollbackFor = [Exception::class])
     fun addRunningDistance(userId: Long, distanceMeters: Long) {
@@ -107,6 +119,15 @@ class LeagueService(
             ?: throw RuntimeException("리그 참가에 실패했습니다")
 
         leagueParticipantService.updateDistance(participant.id, distanceMeters)
+
+        // AUDITING 상태에서는 지연 업로드 순위 재계산
+        val group = participant.group
+        val season = group.season
+        if (season.state == SeasonState.AUDITING) {
+            val tierType = LeagueTierType.fromId(group.tier.id)
+            leagueSettlementService.processLateUploadSettlement(group, tierType)
+            logger.info { "지연 업로드 순위 재계산 완료: 유저 $userId, 그룹 ${group.id}" }
+        }
     }
 
     /**
@@ -261,5 +282,47 @@ class LeagueService(
         val participantIds = participants.map { it.id }
 
         return Pair(histories, participantIds)
+    }
+
+    // ==================== 장기 미접속 유저 처리 ====================
+
+    /**
+     * 장기 미접속 유저 처리
+     *
+     * 노션 기획서 정책:
+     * - 2시즌 이상 미참여 시 비활성화 처리
+     * - 비활성화 시 1단계 강등 (최하위 티어는 유지)
+     * - 복귀 시 재활성화 가능
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun processInactiveUsers() {
+        logger.info { "장기 미접속 유저 처리 시작" }
+
+        val currentSeason = leagueSeasonService.getCurrentSeason()
+        if (currentSeason == null) {
+            logger.warn { "활성 시즌이 없어 장기 미접속 유저 처리를 건너뜁니다" }
+            return
+        }
+
+        // 2시즌 이상 미참여 유저 조회
+        val inactiveUsers = userLeagueInfoRepository.findInactiveUsers(currentSeason.seasonNumber)
+
+        if (inactiveUsers.isEmpty()) {
+            logger.info { "처리할 장기 미접속 유저가 없습니다" }
+            return
+        }
+
+        var processedCount = 0
+        inactiveUsers.forEach { userLeagueInfo ->
+            try {
+                userLeagueInfoService.handleInactiveUser(userLeagueInfo.user.id)
+                processedCount++
+                logger.debug { "유저 ${userLeagueInfo.user.id} 비활성화 처리 완료" }
+            } catch (e: Exception) {
+                logger.error(e) { "유저 ${userLeagueInfo.user.id} 비활성화 처리 실패" }
+            }
+        }
+
+        logger.info { "장기 미접속 유저 처리 완료: ${processedCount}/${inactiveUsers.size}명 처리" }
     }
 }

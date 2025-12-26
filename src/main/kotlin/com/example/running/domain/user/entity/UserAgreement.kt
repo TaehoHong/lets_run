@@ -3,6 +3,7 @@ package com.example.running.domain.user.entity
 import com.example.running.domain.term.entity.Term
 import jakarta.persistence.*
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Entity
 @Table(name = "user_agreement")
@@ -34,6 +35,6 @@ class UserAgreement(
 
     fun agree() {
         this.isAgreed = true
-        this.agreedDatetime = OffsetDateTime.now()
+        this.agreedDatetime = OffsetDateTime.now(ZoneOffset.UTC)
     }
 }

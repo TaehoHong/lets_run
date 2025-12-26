@@ -16,7 +16,7 @@ data class LeagueParticipantDto(
             return LeagueParticipantDto(
                 id = participant.id,
                 userId = participant.user?.id,
-                nickname = if (participant.isBot) "Bot" else participant.user?.nickname,
+                nickname = if (participant.isBot) participant.botName else participant.user?.nickname,
                 totalDistance = participant.totalDistance,
                 rank = rank,
                 isBot = participant.isBot,

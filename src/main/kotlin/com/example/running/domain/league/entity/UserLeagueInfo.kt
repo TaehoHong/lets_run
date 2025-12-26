@@ -6,6 +6,7 @@ import com.example.running.domain.league.enums.RebirthMedal
 import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
+import java.time.LocalDate
 
 @Entity
 @Table(name = "user_league_info")
@@ -34,7 +35,14 @@ class UserLeagueInfo(
 
     @ColumnDefault("1")
     @Column(name = "is_active", nullable = false, columnDefinition = "TINYINT(1)")
-    var isActive: Boolean = true
+    var isActive: Boolean = true,
+
+    @ColumnDefault("0")
+    @Column(name = "streak_count", nullable = false, columnDefinition = "INT UNSIGNED")
+    var streakCount: Int = 0,
+
+    @Column(name = "last_run_date", columnDefinition = "DATE")
+    var lastRunDate: LocalDate? = null
 
 ) : BaseDatetime() {
 
@@ -81,6 +89,45 @@ class UserLeagueInfo(
     fun updateTier(tierId: Int) {
         val tierType = LeagueTierType.fromId(tierId)
         this.currentTier = LeagueTier(id = tierType.id, name = tierType.name, displayOrder = tierType.displayOrder)
+    }
+
+    /**
+     * 연속 러닝 업데이트
+     * @return 연속 러닝 일수 (보너스 계산용)
+     */
+    fun updateStreak(runDate: LocalDate): Int {
+        val previousDate = lastRunDate
+
+        when {
+            // 첫 러닝 또는 같은 날 러닝
+            previousDate == null || previousDate == runDate -> {
+                if (previousDate == null) {
+                    streakCount = 1
+                    lastRunDate = runDate
+                }
+                // 같은 날이면 streak 유지
+            }
+            // 연속 러닝 (어제 뛴 경우)
+            previousDate.plusDays(1) == runDate -> {
+                streakCount++
+                lastRunDate = runDate
+            }
+            // 연속 끊김 (하루 이상 건너뜀)
+            else -> {
+                streakCount = 1
+                lastRunDate = runDate
+            }
+        }
+
+        return streakCount
+    }
+
+    /**
+     * 연속 러닝 초기화
+     */
+    fun resetStreak() {
+        streakCount = 0
+        lastRunDate = null
     }
 
     companion object {

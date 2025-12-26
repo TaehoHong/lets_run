@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
 import org.springframework.web.util.ContentCachingResponseWrapper
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Component
@@ -20,7 +21,7 @@ class ApiLoggingInterceptor: HandlerInterceptor {
     val log = KotlinLogging.logger {}
 
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
-        log.info { "Time: ${OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}" }
+        log.info { "Time: ${OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}" }
         log.info { "Requests: ${request.method} - ${request.requestURL}${if (request.queryString != null) "?" + request.queryString else ""}" }
         log.info { "AccessToken: ${request.getHeader(JwtProperties.ACCESS_TOKEN_HEADER)}" }
         log.info { "RefreshToken: ${request.getHeader(JwtProperties.REFRESH_TOKEN_HEADER)}" }
@@ -38,7 +39,7 @@ class ApiLoggingInterceptor: HandlerInterceptor {
         (response as ContentCachingResponseWrapper).also {
             log.info {
                 """
-                    Time: ${OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}
+                    Time: ${OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}
                     Statue: ${response.status}
                     Response Body: ${objectMapper.readTree(response.contentAsByteArray.toString(charset(request.characterEncoding)))}
                 """.trimIndent()

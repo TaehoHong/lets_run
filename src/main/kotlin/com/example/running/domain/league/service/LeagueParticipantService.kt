@@ -2,6 +2,7 @@ package com.example.running.domain.league.service
 
 import com.example.running.domain.league.entity.LeagueGroup
 import com.example.running.domain.league.entity.LeagueParticipant
+import com.example.running.domain.league.enums.BotType
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.enums.PromotionStatus
 import com.example.running.domain.league.repository.LeagueParticipantRepository
@@ -15,13 +16,19 @@ import kotlin.random.Random
 
 @Service
 class LeagueParticipantService(
-    private val leagueParticipantRepository: LeagueParticipantRepository
+    private val leagueParticipantRepository: LeagueParticipantRepository,
+    private val botNameGenerator: BotNameGenerator
 ) {
     companion object {
         const val PROMOTION_RATE = 0.3
         const val RELEGATION_RATE = 0.2
-        const val BOT_MIN_DISTANCE_RATE = 0.5
-        const val BOT_MAX_DISTANCE_RATE = 1.0
+
+        // COMPETITOR 봇 거리 범위: 티어 평균의 60~120%
+        const val COMPETITOR_MIN_DISTANCE_RATE = 0.6
+        const val COMPETITOR_MAX_DISTANCE_RATE = 1.2
+
+        // PACER 봇 거리 범위: 승격 컷 ±5%
+        const val PACER_VARIANCE_RATE = 0.05
     }
 
     @Transactional(rollbackFor = [Exception::class])
@@ -30,11 +37,52 @@ class LeagueParticipantService(
         return leagueParticipantRepository.save(participant)
     }
 
+    /**
+     * 봇 추가 (기존 호환성 유지)
+     */
     @Transactional(rollbackFor = [Exception::class])
     fun addBot(group: LeagueGroup, averageDistance: Long): LeagueParticipant {
-        val botDistance = calculateBotDistance(averageDistance)
-        val bot = LeagueParticipant.createBot(group, botDistance)
+        return addBot(group, averageDistance, BotType.COMPETITOR)
+    }
+
+    /**
+     * 특정 유형의 봇 추가
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun addBot(group: LeagueGroup, averageDistance: Long, botType: BotType): LeagueParticipant {
+        val botDistance = calculateBotDistance(averageDistance, botType)
+        val botName = botNameGenerator.generate()
+        val bot = LeagueParticipant.createBot(group, botDistance, botType, botName)
         return leagueParticipantRepository.save(bot)
+    }
+
+    /**
+     * 필요한 수만큼 봇 추가 (PACER 30%, COMPETITOR 70% 비율)
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun addBots(group: LeagueGroup, count: Int, averageDistance: Long, promotionCutDistance: Long): List<LeagueParticipant> {
+        if (count <= 0) return emptyList()
+
+        val (pacerCount, competitorCount) = BotType.calculateDistribution(count)
+        val bots = mutableListOf<LeagueParticipant>()
+
+        // PACER 봇 추가 (승격 컷 근처)
+        repeat(pacerCount) {
+            val distance = calculatePacerDistance(promotionCutDistance)
+            val botName = botNameGenerator.generate()
+            val bot = LeagueParticipant.createBot(group, distance, BotType.PACER, botName)
+            bots.add(leagueParticipantRepository.save(bot))
+        }
+
+        // COMPETITOR 봇 추가 (다양한 구간)
+        repeat(competitorCount) {
+            val distance = calculateCompetitorDistance(averageDistance)
+            val botName = botNameGenerator.generate()
+            val bot = LeagueParticipant.createBot(group, distance, BotType.COMPETITOR, botName)
+            bots.add(leagueParticipantRepository.save(bot))
+        }
+
+        return bots
     }
 
     @Transactional(rollbackFor = [Exception::class])
@@ -106,9 +154,31 @@ class LeagueParticipantService(
         }
     }
 
-    private fun calculateBotDistance(averageDistance: Long): Long {
-        val minDistance = (averageDistance * BOT_MIN_DISTANCE_RATE).toLong()
-        val maxDistance = (averageDistance * BOT_MAX_DISTANCE_RATE).toLong()
+    /**
+     * 봇 유형에 따른 거리 계산
+     */
+    private fun calculateBotDistance(averageDistance: Long, botType: BotType): Long {
+        return when (botType) {
+            BotType.PACER -> calculatePacerDistance(averageDistance)
+            BotType.COMPETITOR -> calculateCompetitorDistance(averageDistance)
+        }
+    }
+
+    /**
+     * PACER 봇 거리 계산: 승격 컷 ±5%
+     */
+    private fun calculatePacerDistance(promotionCutDistance: Long): Long {
+        val minDistance = (promotionCutDistance * (1 - PACER_VARIANCE_RATE)).toLong()
+        val maxDistance = (promotionCutDistance * (1 + PACER_VARIANCE_RATE)).toLong()
+        return Random.nextLong(minDistance, maxDistance.coerceAtLeast(minDistance + 1))
+    }
+
+    /**
+     * COMPETITOR 봇 거리 계산: 티어 평균의 60~120%
+     */
+    private fun calculateCompetitorDistance(averageDistance: Long): Long {
+        val minDistance = (averageDistance * COMPETITOR_MIN_DISTANCE_RATE).toLong()
+        val maxDistance = (averageDistance * COMPETITOR_MAX_DISTANCE_RATE).toLong()
         return Random.nextLong(minDistance, maxDistance.coerceAtLeast(minDistance + 1))
     }
 
