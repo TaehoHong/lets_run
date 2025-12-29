@@ -2,10 +2,8 @@ package com.example.running.domain.league.enums
 
 /**
  * 리그 시즌 상태
- *
- * @see <a href="https://www.notion.so/2cc405e9dd388175bf1cf008612a3876">리그 기획서</a>
  */
-enum class SeasonState {
+enum class LeagueSessionState {
     /**
      * 활성 상태 (월~일 23:59:59)
      * - 실시간 랭킹 갱신

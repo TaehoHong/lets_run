@@ -4,9 +4,8 @@ import com.example.running.domain.league.enums.LeagueTierType
 import java.time.OffsetDateTime
 
 data class CurrentLeagueDto(
-    val seasonNumber: Int,
     val tierName: String,
-    val groupId: Long,
+    val sessionId: Long,
     val myRank: Int,
     val totalParticipants: Int,
     val myDistance: Long,

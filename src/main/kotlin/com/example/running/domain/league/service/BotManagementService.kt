@@ -1,8 +1,7 @@
 package com.example.running.domain.league.service
 
-import com.example.running.domain.league.entity.LeagueGroup
 import com.example.running.domain.league.entity.LeagueParticipant
-import com.example.running.domain.league.entity.LeagueSeason
+import com.example.running.domain.league.entity.LeagueSession
 import com.example.running.domain.league.enums.BotType
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.repository.LeagueParticipantRepository
@@ -29,8 +28,8 @@ private val logger = KotlinLogging.logger {}
  */
 @Service
 class BotManagementService(
+    private val leagueSessionService: LeagueSessionService,
     private val leagueParticipantRepository: LeagueParticipantRepository,
-    private val leagueGroupService: LeagueGroupService,
     private val leagueParticipantService: LeagueParticipantService,
     private val botNameGenerator: BotNameGenerator
 ) {
@@ -69,9 +68,10 @@ class BotManagementService(
      * - 24시간 이후: 20명 미달 시 즉시 20명까지 채움
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun executeProgressiveBotInjection(season: LeagueSeason) {
+    fun executeProgressiveBotInjection(sessionId: Long) {
+        val leagueSession = leagueSessionService.getById(sessionId)
         val now = OffsetDateTime.now(UTC)
-        val elapsedHours = between(season.createdDatetime, now).toMinutes() / 60.0
+        val elapsedHours = between(leagueSession.createdDatetime, now).toMinutes() / 60.0
 
         // 3시간 이전: 투입 안함
         if (elapsedHours < BOT_INJECTION_START_HOURS) {
@@ -79,33 +79,27 @@ class BotManagementService(
             return
         }
 
-        LeagueTierType.entries.forEach { tierType ->
-            val groups = leagueGroupService.getGroupsBySeasonAndTier(season.id, tierType.id)
+        val currentParticipants = leagueParticipantService.countParticipants(leagueSession.id)
+        val currentBots = leagueParticipantRepository.findBotsByGroupId(leagueSession.id).size
+        val realParticipants = currentParticipants - currentBots
 
-            groups.forEach { group ->
-                val currentParticipants = leagueParticipantService.countParticipants(group.id)
-                val currentBots = leagueParticipantRepository.findBotsByGroupId(group.id).size
-                val realParticipants = currentParticipants - currentBots
+        // 20명 이상이면 투입 불필요
+        if (currentParticipants >= MINIMUM_PARTICIPANTS) {
+            return
+        }
 
-                // 20명 이상이면 투입 불필요
-                if (currentParticipants >= MINIMUM_PARTICIPANTS) {
-                    return@forEach
-                }
+        // 필요한 총 봇 수 (20명 - 실제 유저)
+        val totalBotsNeeded = (MINIMUM_PARTICIPANTS - realParticipants).coerceAtLeast(0)
 
-                // 필요한 총 봇 수 (20명 - 실제 유저)
-                val totalBotsNeeded = (MINIMUM_PARTICIPANTS - realParticipants).coerceAtLeast(0)
+        // 현재 시점에서 투입해야 할 목표 봇 수
+        val targetBotCount = calculateTargetBotCount(elapsedHours, totalBotsNeeded)
 
-                // 현재 시점에서 투입해야 할 목표 봇 수
-                val targetBotCount = calculateTargetBotCount(elapsedHours, totalBotsNeeded)
+        // 추가로 투입할 봇 수
+        val botsToAdd = (targetBotCount - currentBots).coerceAtLeast(0)
 
-                // 추가로 투입할 봇 수
-                val botsToAdd = (targetBotCount - currentBots).coerceAtLeast(0)
-
-                if (botsToAdd > 0) {
-                    injectBots(group, botsToAdd, tierType, elapsedHours)
-                    logger.info { "그룹 ${group.id} (${tierType}): 봇 ${botsToAdd}명 투입 (현재 ${currentBots} → ${currentBots + botsToAdd}, 목표 $totalBotsNeeded, 경과 ${String.format("%.1f", elapsedHours)}시간)" }
-                }
-            }
+        if (botsToAdd > 0) {
+            injectBots(leagueSession, botsToAdd, LeagueTierType.fromId(leagueSession.tier.id), elapsedHours)
+            logger.info { "그룹 ${leagueSession.id} (${LeagueTierType.fromId(leagueSession.tier.id)}): 봇 ${botsToAdd}명 투입 (현재 ${currentBots} → ${currentBots + botsToAdd}, 목표 $totalBotsNeeded, 경과 ${String.format("%.1f", elapsedHours)}시간)" }
         }
     }
 
@@ -135,7 +129,7 @@ class BotManagementService(
      * @param elapsedHours 시즌 시작 후 경과 시간 (초기 거리 계산에 사용)
      */
     private fun injectBots(
-        group: LeagueGroup,
+        session: LeagueSession,
         count: Int,
         tierType: LeagueTierType,
         elapsedHours: Double
@@ -152,7 +146,7 @@ class BotManagementService(
             val botName = botNameGenerator.generate()
             val slot = Random.nextInt(0, TOTAL_SLOTS)
 
-            val bot = LeagueParticipant.createBot(group, currentDistance, BotType.PACER, botName, slot)
+            val bot = LeagueParticipant.createBot(session, currentDistance, BotType.PACER, botName, slot)
             leagueParticipantRepository.save(bot)
         }
 
@@ -163,7 +157,7 @@ class BotManagementService(
             val botName = botNameGenerator.generate()
             val slot = Random.nextInt(0, TOTAL_SLOTS)
 
-            val bot = LeagueParticipant.createBot(group, currentDistance, BotType.COMPETITOR, botName, slot)
+            val bot = LeagueParticipant.createBot(session, currentDistance, BotType.COMPETITOR, botName, slot)
             leagueParticipantRepository.save(bot)
         }
     }
@@ -200,7 +194,9 @@ class BotManagementService(
      * - 각 봇은 하루에 한 번만 업데이트됨
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun updateBotDistancesBySlot(season: LeagueSeason) {
+    fun updateBotDistancesBySlot(seasonId: Long) {
+
+        val session = leagueSessionService.getById(seasonId)
         val now = OffsetDateTime.now(UTC)
         val today = now.toLocalDate()
         val dayOfWeek = now.dayOfWeek
@@ -211,7 +207,7 @@ class BotManagementService(
         val maxProgress = progressRange.last / 100.0
 
         // 해당 슬롯에서 오늘 아직 업데이트되지 않은 봇만 조회
-        val botsToUpdate = leagueParticipantRepository.findBotsToUpdateBySlot(season.id, currentSlot, today)
+        val botsToUpdate = leagueParticipantRepository.findBotsToUpdateBySlot(seasonId, currentSlot, today)
 
         if (botsToUpdate.isEmpty()) {
             logger.debug { "슬롯 $currentSlot: 업데이트할 봇 없음" }
@@ -221,7 +217,7 @@ class BotManagementService(
         logger.info { "봇 기록 갱신: 슬롯 $currentSlot, ${dayOfWeek}, 대상 ${botsToUpdate.size}명, 진행률 ${progressRange.first}~${progressRange.last}%" }
 
         botsToUpdate.forEach { bot ->
-            val tierType = LeagueTierType.fromId(bot.group.tier.id)
+            val tierType = LeagueTierType.fromId(session.tier.id)
             val averageDistance = getAverageDistanceForTier(tierType)
             val promotionCutDistance = calculatePromotionCutDistance(averageDistance)
 

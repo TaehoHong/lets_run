@@ -1,8 +1,11 @@
 package com.example.running.domain.league.service
 
-import com.example.running.domain.league.entity.LeagueSeason
-import com.example.running.domain.league.enums.SeasonState
-import com.example.running.domain.league.repository.LeagueSeasonRepository
+import com.example.running.domain.common.dto.CursorResult
+import com.example.running.domain.league.entity.LeagueSession
+import com.example.running.domain.league.entity.LeagueTier
+import com.example.running.domain.league.enums.LeagueSessionState
+import com.example.running.domain.league.enums.LeagueTierType
+import com.example.running.domain.league.repository.LeagueSessionRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,8 +18,8 @@ import java.time.temporal.TemporalAdjusters
 private val logger = KotlinLogging.logger {}
 
 @Service
-class LeagueSeasonService(
-    private val leagueSeasonRepository: LeagueSeasonRepository
+class LeagueSessionService(
+    private val leagueSessionRepository: LeagueSessionRepository
 ) {
     companion object {
         private val UTC = ZoneOffset.UTC
@@ -29,45 +32,45 @@ class LeagueSeasonService(
     }
 
     @Transactional(readOnly = true)
-    fun getCurrentSeason(): LeagueSeason? {
-        return leagueSeasonRepository.findByIsActiveTrue()
+    fun getCurrentSeason(): LeagueSession? {
+        return leagueSessionRepository.findByIsActiveTrue()
     }
 
     @Transactional(readOnly = true)
-    fun getLatestSeason(): LeagueSeason? {
-        return leagueSeasonRepository.findTopByOrderBySeasonNumberDesc()
+    fun findById(id: Long): LeagueSession? {
+        return leagueSessionRepository.findById(id).orElse(null)
     }
 
     @Transactional(readOnly = true)
-    fun getSeasonById(seasonId: Long): LeagueSeason? {
-        return leagueSeasonRepository.findById(seasonId).orElse(null)
+    fun getById(id: Long): LeagueSession {
+        return leagueSessionRepository.findById(id).orElseThrow { RuntimeException() }
+    }
+
+    @Transactional(readOnly = true)
+    fun getAllLeagueSeasonId(state: LeagueSessionState, cursor: Long?, pageSize: Long): CursorResult<Long> {
+        val contents = leagueSessionRepository.findAllIdByStatus(state, cursor, pageSize)
+        val hasNext = leagueSessionRepository.hasNext(state, contents.lastOrNull())
+
+        return CursorResult(
+            contents,
+            contents.lastOrNull(),
+            hasNext
+        )
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun createNewSeason(): LeagueSeason {
-        // 기존 활성 시즌 비활성화
-        getCurrentSeason()?.deactivate()
+    fun createNewSeason(): LeagueSession {
 
-        val nextSeasonNumber = (leagueSeasonRepository.findMaxSeasonNumber() ?: 0) + 1
         val (startDatetime, endDatetime) = calculateSeasonPeriod()
 
-        val newSeason = LeagueSeason(
-            seasonNumber = nextSeasonNumber,
+        val newSeason = LeagueSession(
+            tier = LeagueTier(LeagueTierType.BRONZE),
             startDatetime = startDatetime,
             endDatetime = endDatetime,
             isActive = true,
-            state = SeasonState.ACTIVE
+            state = LeagueSessionState.ACTIVE
         )
-
-        logger.info { "새 시즌 생성: 시즌 ${newSeason.seasonNumber}" }
-        return leagueSeasonRepository.save(newSeason)
-    }
-
-    @Transactional(rollbackFor = [Exception::class])
-    fun endCurrentSeason(): LeagueSeason? {
-        val currentSeason = getCurrentSeason() ?: return null
-        currentSeason.deactivate()
-        return currentSeason
+        return leagueSessionRepository.save(newSeason)
     }
 
     // ==================== 시즌 상태 전이 (State Machine) ====================
@@ -77,17 +80,15 @@ class LeagueSeasonService(
      * ACTIVE -> LOCKED
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun lockSeason(seasonId: Long): LeagueSeason {
-        val season = getSeasonById(seasonId)
-            ?: throw RuntimeException("시즌을 찾을 수 없습니다: $seasonId")
+    fun lockSeason(seasonId: Long) {
+        val season = findById(seasonId) ?: return
 
-        if (season.state != SeasonState.ACTIVE) {
+        if (season.state != LeagueSessionState.ACTIVE) {
             throw IllegalStateException("ACTIVE 상태에서만 LOCKED로 전환할 수 있습니다. 현재: ${season.state}")
         }
 
         season.lock()
-        logger.info { "시즌 ${season.seasonNumber} 잠금 처리됨 (LOCKED)" }
-        return season
+        logger.info { "시즌 $seasonId 잠금 처리됨 (LOCKED)" }
     }
 
     /**
@@ -95,16 +96,16 @@ class LeagueSeasonService(
      * LOCKED -> CALCULATING
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun startCalculating(seasonId: Long): LeagueSeason {
-        val season = getSeasonById(seasonId)
+    fun startCalculating(seasonId: Long): LeagueSession {
+        val season = findById(seasonId)
             ?: throw RuntimeException("시즌을 찾을 수 없습니다: $seasonId")
 
-        if (season.state != SeasonState.LOCKED) {
+        if (season.state != LeagueSessionState.LOCKED) {
             throw IllegalStateException("LOCKED 상태에서만 CALCULATING으로 전환할 수 있습니다. 현재: ${season.state}")
         }
 
         season.startCalculating()
-        logger.info { "시즌 ${season.seasonNumber} 정산 시작 (CALCULATING)" }
+        logger.info { "시즌 $seasonId 정산 시작 (CALCULATING)" }
         return season
     }
 
@@ -113,16 +114,16 @@ class LeagueSeasonService(
      * CALCULATING -> AUDITING
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun startAuditing(seasonId: Long): LeagueSeason {
-        val season = getSeasonById(seasonId)
+    fun startAuditing(seasonId: Long): LeagueSession {
+        val season = findById(seasonId)
             ?: throw RuntimeException("시즌을 찾을 수 없습니다: $seasonId")
 
-        if (season.state != SeasonState.CALCULATING) {
+        if (season.state != LeagueSessionState.CALCULATING) {
             throw IllegalStateException("CALCULATING 상태에서만 AUDITING으로 전환할 수 있습니다. 현재: ${season.state}")
         }
 
         season.startAuditing()
-        logger.info { "시즌 ${season.seasonNumber} 검수 시작 (AUDITING)" }
+        logger.info { "시즌 $seasonId 검수 시작 (AUDITING)" }
         return season
     }
 
@@ -131,16 +132,16 @@ class LeagueSeasonService(
      * AUDITING -> FINALIZED
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun finalizeSeason(seasonId: Long): LeagueSeason {
-        val season = getSeasonById(seasonId)
+    fun finalizeSeason(seasonId: Long): LeagueSession {
+        val season = findById(seasonId)
             ?: throw RuntimeException("시즌을 찾을 수 없습니다: $seasonId")
 
-        if (season.state != SeasonState.AUDITING) {
+        if (season.state != LeagueSessionState.AUDITING) {
             throw IllegalStateException("AUDITING 상태에서만 FINALIZED로 전환할 수 있습니다. 현재: ${season.state}")
         }
 
         season.finalize()
-        logger.info { "시즌 ${season.seasonNumber} 최종 확정 (FINALIZED)" }
+        logger.info { "시즌 $seasonId 최종 확정 (FINALIZED)" }
         return season
     }
 
@@ -152,38 +153,38 @@ class LeagueSeasonService(
      * - Grace Period: 15분
      * - 지연 업로드: 시즌 종료 후 24시간까지
      */
-    fun canAcceptRunningRecord(runningStartedAt: OffsetDateTime): Pair<Boolean, LeagueSeason?> {
-        val currentSeason = getCurrentSeason()
-
-        // 활성 시즌이 있고, 러닝 시작 시간이 시즌 기간 내인 경우
-        if (currentSeason != null && currentSeason.canAcceptNewRecords()) {
-            val seasonStart = currentSeason.startDatetime.minusMinutes(GRACE_PERIOD_MINUTES)
-            val seasonEnd = currentSeason.endDatetime.plusMinutes(GRACE_PERIOD_MINUTES)
-
-            if (runningStartedAt.isAfter(seasonStart) && runningStartedAt.isBefore(seasonEnd)) {
-                return Pair(true, currentSeason)
-            }
-        }
-
-        // AUDITING 상태에서 지연 업로드 허용
-        val latestSeason = getLatestSeason()
-        if (latestSeason != null && latestSeason.canAcceptLateRecords()) {
-            val uploadDeadline = latestSeason.endDatetime.plusHours(LATE_UPLOAD_GRACE_HOURS)
-            val now = OffsetDateTime.now(UTC)
-
-            if (now.isBefore(uploadDeadline)) {
-                // 러닝 시작 시간이 해당 시즌 기간 내인지 확인
-                val seasonStart = latestSeason.startDatetime.minusMinutes(GRACE_PERIOD_MINUTES)
-                val seasonEnd = latestSeason.endDatetime.plusMinutes(GRACE_PERIOD_MINUTES)
-
-                if (runningStartedAt.isAfter(seasonStart) && runningStartedAt.isBefore(seasonEnd)) {
-                    return Pair(true, latestSeason)
-                }
-            }
-        }
-
-        return Pair(false, null)
-    }
+//    fun canAcceptRunningRecord(runningStartedAt: OffsetDateTime): Pair<Boolean, LeagueSession?> {
+//        val currentSeason = getCurrentSeason()
+//
+//        // 활성 시즌이 있고, 러닝 시작 시간이 시즌 기간 내인 경우
+//        if (currentSeason != null && currentSeason.canAcceptNewRecords()) {
+//            val seasonStart = currentSeason.startDatetime.minusMinutes(GRACE_PERIOD_MINUTES)
+//            val seasonEnd = currentSeason.endDatetime.plusMinutes(GRACE_PERIOD_MINUTES)
+//
+//            if (runningStartedAt.isAfter(seasonStart) && runningStartedAt.isBefore(seasonEnd)) {
+//                return Pair(true, currentSeason)
+//            }
+//        }
+//
+//        // AUDITING 상태에서 지연 업로드 허용
+//        val latestSeason = getLatestSeason()
+//        if (latestSeason != null && latestSeason.canAcceptLateRecords()) {
+//            val uploadDeadline = latestSeason.endDatetime.plusHours(LATE_UPLOAD_GRACE_HOURS)
+//            val now = OffsetDateTime.now(UTC)
+//
+//            if (now.isBefore(uploadDeadline)) {
+//                // 러닝 시작 시간이 해당 시즌 기간 내인지 확인
+//                val seasonStart = latestSeason.startDatetime.minusMinutes(GRACE_PERIOD_MINUTES)
+//                val seasonEnd = latestSeason.endDatetime.plusMinutes(GRACE_PERIOD_MINUTES)
+//
+//                if (runningStartedAt.isAfter(seasonStart) && runningStartedAt.isBefore(seasonEnd)) {
+//                    return Pair(true, latestSeason)
+//                }
+//            }
+//        }
+//
+//        return Pair(false, null)
+//    }
 
     /**
      * 시즌 기간 계산: 월요일 00:00 ~ 일요일 23:59:59 (KST)

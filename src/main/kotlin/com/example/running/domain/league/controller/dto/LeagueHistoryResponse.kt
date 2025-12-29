@@ -36,7 +36,6 @@ data class LeagueHistoryResponse(
  */
 data class LeagueHistoryItemResponse(
     val id: Long?,
-    val seasonNumber: Int,
     val tier: String,
     val rank: Int?,
     val totalParticipants: Int,
@@ -47,7 +46,6 @@ data class LeagueHistoryItemResponse(
         fun from(dto: LeagueHistoryDto, participantId: Long?): LeagueHistoryItemResponse {
             return LeagueHistoryItemResponse(
                 id = participantId,
-                seasonNumber = dto.seasonNumber,
                 tier = dto.tier,
                 rank = dto.rank,
                 totalParticipants = dto.totalParticipants,

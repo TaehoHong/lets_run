@@ -20,8 +20,8 @@ class LeagueParticipant(
     val id: Long = 0,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false, referencedColumnName = "id")
-    val group: LeagueGroup,
+    @JoinColumn(name = "session_id", nullable = false, referencedColumnName = "id")
+    val leagueSession: LeagueSession,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
@@ -124,14 +124,14 @@ class LeagueParticipant(
 
     companion object {
         fun createBot(
-            group: LeagueGroup,
+            leagueSession: LeagueSession,
             distance: Long,
             botType: BotType,
             botName: String,
             scheduledUpdateSlot: Int? = null
         ): LeagueParticipant {
             return LeagueParticipant(
-                group = group,
+                leagueSession = leagueSession,
                 user = null,
                 totalDistance = distance,
                 distanceAchievedAt = OffsetDateTime.now(ZoneOffset.UTC),
@@ -142,9 +142,9 @@ class LeagueParticipant(
             )
         }
 
-        fun createParticipant(group: LeagueGroup, user: User): LeagueParticipant {
+        fun createParticipant(leagueSession: LeagueSession, user: User): LeagueParticipant {
             return LeagueParticipant(
-                group = group,
+                leagueSession = leagueSession,
                 user = user,
                 isBot = false
             )

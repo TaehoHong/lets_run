@@ -29,10 +29,6 @@ class UserLeagueInfo(
     @Column(name = "rebirth_count", nullable = false, columnDefinition = "INT UNSIGNED")
     var rebirthCount: Int = 0,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "last_active_season_id", referencedColumnName = "id")
-    var lastActiveSeason: LeagueSeason? = null,
-
     @ColumnDefault("1")
     @Column(name = "is_active", nullable = false, columnDefinition = "TINYINT(1)")
     var isActive: Boolean = true,
@@ -76,10 +72,6 @@ class UserLeagueInfo(
 
     fun activate() {
         this.isActive = true
-    }
-
-    fun updateLastActiveSeason(season: LeagueSeason) {
-        this.lastActiveSeason = season
     }
 
     fun getRebirthMedal(): RebirthMedal {

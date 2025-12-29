@@ -6,7 +6,6 @@ import com.example.running.domain.league.service.dto.LeagueResultDto
  * 리그 시즌 결과 응답 DTO
  */
 data class LeagueResultResponse(
-    val seasonNumber: Int,
     val previousTier: String,
     val currentTier: String,
     val resultStatus: String,
@@ -18,7 +17,6 @@ data class LeagueResultResponse(
     companion object {
         fun from(dto: LeagueResultDto): LeagueResultResponse {
             return LeagueResultResponse(
-                seasonNumber = dto.seasonNumber,
                 previousTier = dto.previousTier.name,
                 currentTier = dto.currentTier.name,
                 resultStatus = dto.resultStatus.name,

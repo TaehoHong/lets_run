@@ -1,8 +1,6 @@
 package com.example.running.domain.league.service
 
-import com.example.running.domain.league.entity.LeagueGroup
-import com.example.running.domain.league.entity.LeagueParticipant
-import com.example.running.domain.league.entity.LeagueSeason
+import com.example.running.domain.league.entity.LeagueSession
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.enums.PromotionStatus
 import com.example.running.domain.league.repository.LeagueParticipantRepository
@@ -29,8 +27,7 @@ private val logger = KotlinLogging.logger {}
  */
 @Service
 class LeagueSettlementService(
-    private val leagueSeasonService: LeagueSeasonService,
-    private val leagueGroupService: LeagueGroupService,
+    private val leagueSessionService: LeagueSessionService,
     private val leagueParticipantRepository: LeagueParticipantRepository,
     private val userLeagueInfoService: UserLeagueInfoService
 ) {
@@ -42,38 +39,31 @@ class LeagueSettlementService(
     // ==================== 1차 정산 (월요일 00:15) ====================
 
     /**
-     * 1차 정산 실행
+     * 정산 실행
      * - 각 그룹별 순위 산정
      * - 승격/강등/환생 상태 설정
      * - Protected 플래그 설정 (Soft Lock)
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun executePrimarySettlement(season: LeagueSeason) {
-        logger.info { "1차 정산 시작: 시즌 ${season.seasonNumber}" }
+    fun executePrimarySettlement(seasonId: Long) {
+        logger.info { "정산 시작: 세션 $seasonId" }
 
         // 상태 전환: LOCKED -> CALCULATING
-        leagueSeasonService.startCalculating(season.id)
+        val leagueSession = leagueSessionService.startCalculating(seasonId)
 
-        LeagueTierType.entries.forEach { tierType ->
-            val groups = leagueGroupService.getGroupsBySeasonAndTier(season.id, tierType.id)
-
-            groups.forEach { group ->
-                processGroupSettlement(group, tierType)
-            }
-        }
+        processGroupSettlement(leagueSession)
 
         // 상태 전환: CALCULATING -> AUDITING
-        leagueSeasonService.startAuditing(season.id)
+        leagueSessionService.startAuditing(seasonId)
 
-        logger.info { "1차 정산 완료: 시즌 ${season.seasonNumber}" }
+        logger.info { "정산 완료: 세션 $seasonId" }
     }
 
     /**
      * 그룹별 정산 처리
      */
-    private fun processGroupSettlement(group: LeagueGroup, tierType: LeagueTierType) {
-        val participants = leagueParticipantRepository
-            .findByGroupIdOrderByTotalDistanceDescDistanceAchievedAtAsc(group.id)
+    private fun processGroupSettlement(session: LeagueSession) {
+        val participants = leagueParticipantRepository.findByLeagueSessionIdOrderByTotalDistanceDescDistanceAchievedAtAsc(session.id)
 
         val totalCount = participants.size
         val promotionCut = calculatePromotionCut(totalCount)
@@ -81,7 +71,7 @@ class LeagueSettlementService(
 
         participants.forEachIndexed { index, participant ->
             val rank = index + 1
-            val status = determinePromotionStatus(rank, promotionCut, relegationCut, tierType)
+            val status = determinePromotionStatus(rank, promotionCut, relegationCut, LeagueTierType.fromId(session.tier.id))
 
             participant.setResult(rank, status)
 
@@ -90,75 +80,6 @@ class LeagueSettlementService(
                 participant.markProtected()
             }
         }
-
-        logger.info { "그룹 ${group.id} (${tierType}) 정산: 총 ${totalCount}명, 승격컷 ${promotionCut}위, 강등컷 ${relegationCut}위" }
-    }
-
-    // ==================== 지연 업로드 처리 (AUDITING) ====================
-
-    /**
-     * 지연 업로드 후 순위 재계산
-     * - Protected 유저는 보호 (기존 결과 유지)
-     * - 새 기록으로 인한 순위 상승은 허용
-     */
-    @Transactional(rollbackFor = [Exception::class])
-    fun processLateUploadSettlement(group: LeagueGroup, tierType: LeagueTierType) {
-        val participants = leagueParticipantRepository
-            .findByGroupIdOrderByTotalDistanceDescDistanceAchievedAtAsc(group.id)
-
-        val totalCount = participants.size
-        val promotionCut = calculatePromotionCut(totalCount)
-        val relegationCut = calculateRelegationCut(totalCount)
-
-        participants.forEachIndexed { index, participant ->
-            val newRank = index + 1
-            val newStatus = determinePromotionStatus(newRank, promotionCut, relegationCut, tierType)
-
-            // Soft Lock 적용
-            val finalStatus = applySoftLock(participant, newStatus)
-
-            participant.finalRank = newRank
-            participant.promotionStatus = finalStatus
-        }
-    }
-
-    /**
-     * Soft Lock 적용
-     * - Protected 유저는 기존 상태보다 나빠지지 않음
-     * - 지연 업로더는 보호 없이 새 순위 적용
-     */
-    private fun applySoftLock(
-        participant: LeagueParticipant,
-        newStatus: PromotionStatus
-    ): PromotionStatus {
-        // Protected가 아니면 새 상태 그대로 적용
-        if (!participant.isProtected) {
-            return newStatus
-        }
-
-        val originalStatus = participant.promotionStatus ?: return newStatus
-
-        // 기존 상태가 새 상태보다 좋으면 기존 상태 유지
-        return if (isStatusBetter(originalStatus, newStatus)) {
-            logger.debug { "Soft Lock 적용: 참가자 ${participant.id}, ${originalStatus} 유지 (새 상태: $newStatus)" }
-            originalStatus
-        } else {
-            // 새 상태가 더 좋거나 같으면 새 상태 적용
-            newStatus
-        }
-    }
-
-    /**
-     * 상태 우선순위 비교 (REBIRTH > PROMOTED > MAINTAINED > RELEGATED)
-     */
-    private fun isStatusBetter(status1: PromotionStatus, status2: PromotionStatus): Boolean {
-        val priority = mapOf(
-            PromotionStatus.REBIRTH to 4,
-            PromotionStatus.PROMOTED to 3,
-            PromotionStatus.MAINTAINED to 2,
-            PromotionStatus.RELEGATED to 1
-        )
-        return (priority[status1] ?: 0) > (priority[status2] ?: 0)
     }
 
     // ==================== 최종 확정 (화요일 00:00) ====================
@@ -169,11 +90,11 @@ class LeagueSettlementService(
      * - 시즌 FINALIZED로 상태 전환
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun executeFinalSettlement(season: LeagueSeason) {
-        logger.info { "최종 확정 시작: 시즌 ${season.seasonNumber}" }
+    fun executeFinalSettlement(session: LeagueSession) {
+        logger.info { "최종 확정 시작: 시즌 ${session.id}" }
 
         // 실제 유저에게 승격/강등 반영
-        val participants = leagueParticipantRepository.findParticipantsWithResultBySeasonId(season.id)
+        val participants = leagueParticipantRepository.findParticipantsWithResultBySeasonId(session.id)
 
         participants.forEach { participant ->
             participant.user?.let { user ->
@@ -185,9 +106,9 @@ class LeagueSettlementService(
         }
 
         // 상태 전환: AUDITING -> FINALIZED
-        leagueSeasonService.finalizeSeason(season.id)
+        leagueSessionService.finalizeSeason(session.id)
 
-        logger.info { "최종 확정 완료: 시즌 ${season.seasonNumber}, ${participants.size}명 처리" }
+        logger.info { "최종 확정 완료: 시즌 ${session.id}, ${participants.size}명 처리" }
     }
 
     // ==================== 헬퍼 메서드 ====================

@@ -88,6 +88,7 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/result").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/league/result/confirm").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/history").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/league-participants/*/distance").authenticated()
 
                 authorizeHttpRequests.anyRequest().denyAll()
             }

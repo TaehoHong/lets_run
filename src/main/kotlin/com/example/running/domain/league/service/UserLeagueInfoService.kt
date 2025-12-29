@@ -1,6 +1,5 @@
 package com.example.running.domain.league.service
 
-import com.example.running.domain.league.entity.LeagueSeason
 import com.example.running.domain.league.entity.UserLeagueInfo
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.enums.PromotionStatus
@@ -20,11 +19,6 @@ class UserLeagueInfoService(
     @Transactional(readOnly = true)
     fun getUserLeagueInfo(userId: Long): UserLeagueInfo? {
         return userLeagueInfoRepository.findByUserId(userId)
-    }
-
-    @Transactional(readOnly = true)
-    fun getActiveUserLeagueInfo(userId: Long): UserLeagueInfo? {
-        return userLeagueInfoRepository.findByUserIdAndIsActiveTrue(userId)
     }
 
     @Transactional(rollbackFor = [Exception::class])
@@ -59,41 +53,9 @@ class UserLeagueInfoService(
             PromotionStatus.PROMOTED -> promote(userLeagueInfo)
             PromotionStatus.RELEGATED -> relegate(userLeagueInfo)
             PromotionStatus.REBIRTH -> rebirth(userLeagueInfo)
-            PromotionStatus.MAINTAINED -> { /* 변경 없음 */ }
+            PromotionStatus.MAINTAINED -> { /* 변경 없음 */
+            }
         }
-    }
-
-    @Transactional(rollbackFor = [Exception::class])
-    fun updateLastActiveSeason(userId: Long, season: LeagueSeason) {
-        val userLeagueInfo = userLeagueInfoRepository.findByUserId(userId)
-            ?: throw RuntimeException("유저 리그 정보를 찾을 수 없습니다: $userId")
-
-        userLeagueInfo.updateLastActiveSeason(season)
-    }
-
-    @Transactional(rollbackFor = [Exception::class])
-    fun handleInactiveUser(userId: Long) {
-        val userLeagueInfo = userLeagueInfoRepository.findByUserId(userId)
-            ?: return
-
-        val currentTierType = LeagueTierType.fromId(userLeagueInfo.currentTier.id)
-        val previousTier = LeagueTierType.getPreviousTier(currentTierType)
-
-        if (previousTier != null) {
-            val tier = leagueTierRepository.findById(previousTier.id)
-                .orElseThrow { RuntimeException("티어를 찾을 수 없습니다: ${previousTier.id}") }
-            userLeagueInfo.currentTier = tier
-        }
-
-        userLeagueInfo.deactivate()
-    }
-
-    @Transactional(rollbackFor = [Exception::class])
-    fun reactivateUser(userId: Long) {
-        val userLeagueInfo = userLeagueInfoRepository.findByUserId(userId)
-            ?: throw RuntimeException("유저 리그 정보를 찾을 수 없습니다: $userId")
-
-        userLeagueInfo.activate()
     }
 
     @Transactional(readOnly = true)
@@ -102,16 +64,6 @@ class UserLeagueInfoService(
             ?: return null
 
         return LeagueProfileDto.from(userLeagueInfo)
-    }
-
-    @Transactional(readOnly = true)
-    fun getActiveUsersByTier(tierId: Int): List<UserLeagueInfo> {
-        return userLeagueInfoRepository.findActiveUsersByTierId(tierId)
-    }
-
-    @Transactional(readOnly = true)
-    fun getAllActiveUsers(): List<UserLeagueInfo> {
-        return userLeagueInfoRepository.findAllActiveUsers()
     }
 
     private fun promote(userLeagueInfo: UserLeagueInfo) {

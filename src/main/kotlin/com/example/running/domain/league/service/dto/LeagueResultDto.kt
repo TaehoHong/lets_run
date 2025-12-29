@@ -7,7 +7,6 @@ import com.example.running.domain.league.enums.PromotionStatus
  * 리그 시즌 결과 DTO
  */
 data class LeagueResultDto(
-    val seasonNumber: Int,
     val previousTier: LeagueTierType,
     val currentTier: LeagueTierType,
     val resultStatus: PromotionStatus,

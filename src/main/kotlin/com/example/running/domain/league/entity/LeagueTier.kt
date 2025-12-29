@@ -1,5 +1,6 @@
 package com.example.running.domain.league.entity
 
+import com.example.running.domain.league.enums.LeagueTierType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -18,4 +19,10 @@ class LeagueTier(
 
     @Column(name = "display_order", nullable = false, columnDefinition = "TINYINT UNSIGNED")
     val displayOrder: Int
-)
+) {
+    constructor(tier: LeagueTierType) : this(
+        id = tier.id,
+        name = "",
+        displayOrder = 0
+    )
+}

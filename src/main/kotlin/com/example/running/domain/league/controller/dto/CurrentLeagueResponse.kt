@@ -5,9 +5,8 @@ import com.example.running.domain.league.service.dto.LeagueParticipantDto
 import java.time.OffsetDateTime
 
 data class CurrentLeagueResponse(
-    val seasonNumber: Int,
     val tierName: String,
-    val groupId: Long,
+    val sessionId: Long,
     val myRank: Int,
     val totalParticipants: Int,
     val myDistance: Long,
@@ -20,9 +19,8 @@ data class CurrentLeagueResponse(
     companion object {
         fun from(dto: CurrentLeagueDto): CurrentLeagueResponse {
             return CurrentLeagueResponse(
-                seasonNumber = dto.seasonNumber,
                 tierName = dto.tierName,
-                groupId = dto.groupId,
+                sessionId = dto.sessionId,
                 myRank = dto.myRank,
                 totalParticipants = dto.totalParticipants,
                 myDistance = dto.myDistance,
@@ -37,6 +35,7 @@ data class CurrentLeagueResponse(
 }
 
 data class ParticipantResponse(
+    val id: Long,
     val rank: Int,
     val nickname: String?,
     val distance: Long,
@@ -46,6 +45,7 @@ data class ParticipantResponse(
     companion object {
         fun from(dto: LeagueParticipantDto): ParticipantResponse {
             return ParticipantResponse(
+                id = dto.id,
                 rank = dto.rank,
                 nickname = dto.nickname,
                 distance = dto.totalDistance,

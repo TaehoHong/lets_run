@@ -1,7 +1,7 @@
 package com.example.running.domain.league.service
 
-import com.example.running.domain.league.entity.LeagueGroup
 import com.example.running.domain.league.entity.LeagueParticipant
+import com.example.running.domain.league.entity.LeagueSession
 import com.example.running.domain.league.enums.BotType
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.enums.PromotionStatus
@@ -32,8 +32,8 @@ class LeagueParticipantService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun addParticipant(group: LeagueGroup, user: User): LeagueParticipant {
-        val participant = LeagueParticipant.createParticipant(group, user)
+    fun addParticipant(session: LeagueSession, user: User): LeagueParticipant {
+        val participant = LeagueParticipant.createParticipant(session, user)
         return leagueParticipantRepository.save(participant)
     }
 
@@ -41,18 +41,18 @@ class LeagueParticipantService(
      * 봇 추가 (기존 호환성 유지)
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun addBot(group: LeagueGroup, averageDistance: Long): LeagueParticipant {
-        return addBot(group, averageDistance, BotType.COMPETITOR)
+    fun addBot(session: LeagueSession, averageDistance: Long): LeagueParticipant {
+        return addBot(session, averageDistance, BotType.COMPETITOR)
     }
 
     /**
      * 특정 유형의 봇 추가
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun addBot(group: LeagueGroup, averageDistance: Long, botType: BotType): LeagueParticipant {
+    fun addBot(session: LeagueSession, averageDistance: Long, botType: BotType): LeagueParticipant {
         val botDistance = calculateBotDistance(averageDistance, botType)
         val botName = botNameGenerator.generate()
-        val bot = LeagueParticipant.createBot(group, botDistance, botType, botName)
+        val bot = LeagueParticipant.createBot(session, botDistance, botType, botName)
         return leagueParticipantRepository.save(bot)
     }
 
@@ -60,7 +60,7 @@ class LeagueParticipantService(
      * 필요한 수만큼 봇 추가 (PACER 30%, COMPETITOR 70% 비율)
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun addBots(group: LeagueGroup, count: Int, averageDistance: Long, promotionCutDistance: Long): List<LeagueParticipant> {
+    fun addBots(session: LeagueSession, count: Int, averageDistance: Long, promotionCutDistance: Long): List<LeagueParticipant> {
         if (count <= 0) return emptyList()
 
         val (pacerCount, competitorCount) = BotType.calculateDistribution(count)
@@ -70,7 +70,7 @@ class LeagueParticipantService(
         repeat(pacerCount) {
             val distance = calculatePacerDistance(promotionCutDistance)
             val botName = botNameGenerator.generate()
-            val bot = LeagueParticipant.createBot(group, distance, BotType.PACER, botName)
+            val bot = LeagueParticipant.createBot(session, distance, BotType.PACER, botName)
             bots.add(leagueParticipantRepository.save(bot))
         }
 
@@ -78,7 +78,7 @@ class LeagueParticipantService(
         repeat(competitorCount) {
             val distance = calculateCompetitorDistance(averageDistance)
             val botName = botNameGenerator.generate()
-            val bot = LeagueParticipant.createBot(group, distance, BotType.COMPETITOR, botName)
+            val bot = LeagueParticipant.createBot(session, distance, BotType.COMPETITOR, botName)
             bots.add(leagueParticipantRepository.save(bot))
         }
 
@@ -98,9 +98,9 @@ class LeagueParticipantService(
     }
 
     @Transactional(readOnly = true)
-    fun getRankedParticipants(groupId: Long, currentUserId: Long? = null): List<LeagueParticipantDto> {
+    fun getRankedParticipants(sessionId: Long, currentUserId: Long? = null): List<LeagueParticipantDto> {
         val participants = leagueParticipantRepository
-            .findByGroupIdOrderByTotalDistanceDescDistanceAchievedAtAsc(groupId)
+            .findByLeagueSessionIdOrderByTotalDistanceDescDistanceAchievedAtAsc(sessionId)
 
         return participants.mapIndexed { index, participant ->
             LeagueParticipantDto.from(participant, index + 1, currentUserId)
@@ -108,17 +108,17 @@ class LeagueParticipantService(
     }
 
     @Transactional(readOnly = true)
-    fun getMyRank(groupId: Long, userId: Long): Int {
+    fun getMyRank(sessionId: Long, userId: Long): Int {
         val participants = leagueParticipantRepository
-            .findByGroupIdOrderByTotalDistanceDescDistanceAchievedAtAsc(groupId)
+            .findByLeagueSessionIdOrderByTotalDistanceDescDistanceAchievedAtAsc(sessionId)
 
         return participants.indexOfFirst { it.user?.id == userId } + 1
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun processSeasonEnd(groupId: Long, tierType: LeagueTierType): List<LeagueParticipant> {
+    fun processSeasonEnd(sessionId: Long, tierType: LeagueTierType): List<LeagueParticipant> {
         val participants = leagueParticipantRepository
-            .findByGroupIdOrderByTotalDistanceDescDistanceAchievedAtAsc(groupId)
+            .findByLeagueSessionIdOrderByTotalDistanceDescDistanceAchievedAtAsc(sessionId)
 
         val totalCount = participants.size
         val promotionCut = ceil(totalCount * PROMOTION_RATE).toInt()
@@ -183,12 +183,8 @@ class LeagueParticipantService(
     }
 
     @Transactional(readOnly = true)
-    fun countParticipants(groupId: Long): Int {
-        return leagueParticipantRepository.countByGroupId(groupId)
+    fun countParticipants(sessionId: Long): Int {
+        return leagueParticipantRepository.countBySessionId(sessionId)
     }
 
-    @Transactional(readOnly = true)
-    fun getAverageDistance(seasonId: Long, tierId: Int): Long {
-        return leagueParticipantRepository.findAverageDistanceBySeasonAndTier(seasonId, tierId)?.toLong() ?: 10000L
-    }
 }
