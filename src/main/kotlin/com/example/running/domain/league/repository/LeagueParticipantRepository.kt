@@ -3,6 +3,7 @@ package com.example.running.domain.league.repository
 import com.example.running.domain.league.entity.LeagueParticipant
 import com.example.running.domain.league.entity.QLeagueParticipant.Companion.leagueParticipant
 import com.example.running.domain.league.entity.QLeagueSession.Companion.leagueSession
+import com.example.running.domain.user.entity.QUser.Companion.user
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -20,9 +21,6 @@ interface LeagueParticipantRepository : JpaRepository<LeagueParticipant, Long>, 
 
     @Query("SELECT COUNT(p) FROM LeagueParticipant p WHERE p.leagueSession.id = :sessionId")
     fun countBySessionId(@Param("sessionId") sessionId: Long): Int
-
-    @Query("SELECT p FROM LeagueParticipant p WHERE p.leagueSession.id = :seasonId AND p.isBot = false AND p.promotionStatus IS NOT NULL")
-    fun findParticipantsWithResultBySeasonId(@Param("seasonId") seasonId: Long): List<LeagueParticipant>
 }
 
 interface QLeagueParticipantRepository {
@@ -30,6 +28,7 @@ interface QLeagueParticipantRepository {
     fun findUncheckedResultByUserId(userId: Long): LeagueParticipant?
     fun findHistoryByUserId(userId: Long, cursor: Long?, size: Int): List<LeagueParticipant>
     fun findBotsToUpdateBySlot(seasonId: Long, slot: Int, today: LocalDate): List<LeagueParticipant>
+    fun findAllBySessionIdWithUser(sessionId: Long): List<LeagueParticipant>
 }
 
 class QLeagueParticipantRepositoryImpl(
@@ -110,6 +109,13 @@ class QLeagueParticipantRepositoryImpl(
                 leagueParticipant.lastBotUpdateDate.isNull
                     .or(leagueParticipant.lastBotUpdateDate.ne(today))
             )
+            .fetch()
+    }
+
+    override fun findAllBySessionIdWithUser(sessionId: Long): List<LeagueParticipant> {
+        return queryFactory.selectFrom(leagueParticipant)
+            .leftJoin(leagueParticipant.user, user).fetchJoin()
+            .where(leagueParticipant.leagueSession.id.eq(sessionId))
             .fetch()
     }
 }

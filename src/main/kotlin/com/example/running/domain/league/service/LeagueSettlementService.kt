@@ -1,6 +1,6 @@
 package com.example.running.domain.league.service
 
-import com.example.running.domain.league.entity.LeagueSession
+import com.example.running.domain.league.entity.LeagueParticipant
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.enums.PromotionStatus
 import com.example.running.domain.league.repository.LeagueParticipantRepository
@@ -14,16 +14,6 @@ private val logger = KotlinLogging.logger {}
 
 /**
  * 리그 정산 서비스
- *
- * 노션 기획서 정산 정책:
- * - 일요일 23:59:59: 시즌 종료 (LOCKED)
- * - 월요일 00:15: 1차 정산, Protected 플래그 설정
- * - 월요일 00:15 ~ 화요일 00:00: 지연 업로드 처리 (Soft Lock)
- * - 화요일 00:00: 최종 확정
- *
- * Soft Lock 핵심 원칙: 1차 정산 결과보다 나빠지는 변동은 없음
- *
- * @see <a href="https://www.notion.so/2cc405e9dd388175bf1cf008612a3876">리그 기획서</a>
  */
 @Service
 class LeagueSettlementService(
@@ -36,34 +26,10 @@ class LeagueSettlementService(
         const val RELEGATION_RATE = 0.2  // 하위 20% 강등
     }
 
-    // ==================== 1차 정산 (월요일 00:15) ====================
-
-    /**
-     * 정산 실행
-     * - 각 그룹별 순위 산정
-     * - 승격/강등/환생 상태 설정
-     * - Protected 플래그 설정 (Soft Lock)
-     */
-    @Transactional(rollbackFor = [Exception::class])
-    fun executePrimarySettlement(seasonId: Long) {
-        logger.info { "정산 시작: 세션 $seasonId" }
-
-        // 상태 전환: LOCKED -> CALCULATING
-        val leagueSession = leagueSessionService.startCalculating(seasonId)
-
-        processGroupSettlement(leagueSession)
-
-        // 상태 전환: CALCULATING -> AUDITING
-        leagueSessionService.startAuditing(seasonId)
-
-        logger.info { "정산 완료: 세션 $seasonId" }
-    }
-
     /**
      * 그룹별 정산 처리
      */
-    private fun processGroupSettlement(session: LeagueSession) {
-        val participants = leagueParticipantRepository.findByLeagueSessionIdOrderByTotalDistanceDescDistanceAchievedAtAsc(session.id)
+    private fun processGroupSettlement(tierType: LeagueTierType, participants: List<LeagueParticipant>) {
 
         val totalCount = participants.size
         val promotionCut = calculatePromotionCut(totalCount)
@@ -71,7 +37,7 @@ class LeagueSettlementService(
 
         participants.forEachIndexed { index, participant ->
             val rank = index + 1
-            val status = determinePromotionStatus(rank, promotionCut, relegationCut, LeagueTierType.fromId(session.tier.id))
+            val status = determinePromotionStatus(rank, promotionCut, relegationCut, tierType)
 
             participant.setResult(rank, status)
 
@@ -82,33 +48,36 @@ class LeagueSettlementService(
         }
     }
 
-    // ==================== 최종 확정 (화요일 00:00) ====================
-
     /**
-     * 최종 확정 실행
-     * - 결과 유저에게 반영
-     * - 시즌 FINALIZED로 상태 전환
+     * 즉시 정산 실행 (단순화된 흐름)
+     * - 순위 산정 + 승격/강등 결정
+     * - 유저에게 즉시 반영
+     * - ACTIVE → FINALIZED 직접 전환
      */
     @Transactional(rollbackFor = [Exception::class])
-    fun executeFinalSettlement(session: LeagueSession) {
-        logger.info { "최종 확정 시작: 시즌 ${session.id}" }
+    fun executeImmediateSettlement(sessionId: Long) {
+        logger.info { "즉시 정산 시작: 세션 $sessionId" }
 
-        // 실제 유저에게 승격/강등 반영
-        val participants = leagueParticipantRepository.findParticipantsWithResultBySeasonId(session.id)
+        val session = leagueSessionService.getById(sessionId)
+        val participants = leagueParticipantRepository.findAllBySessionIdWithUser(sessionId).sortedByDescending { it.totalDistance }
 
+        // 1. 정산 처리 (순위, 승격/강등 결정)
+        processGroupSettlement(LeagueTierType.fromId(session.tier.id), participants)
+
+        // 2. 유저에게 즉시 반영
         participants.forEach { participant ->
             participant.user?.let { user ->
                 participant.promotionStatus?.let { status ->
                     userLeagueInfoService.applyPromotionStatus(user.id, status)
-                    logger.debug { "유저 ${user.id}: ${status} 적용" }
+                    logger.debug { "유저 ${user.id}: $status 적용" }
                 }
             }
         }
 
-        // 상태 전환: AUDITING -> FINALIZED
-        leagueSessionService.finalizeSeason(session.id)
+        // 3. 상태 전환: ACTIVE → FINALIZED
+        session.finalize()
 
-        logger.info { "최종 확정 완료: 시즌 ${session.id}, ${participants.size}명 처리" }
+        logger.info { "즉시 정산 완료: 세션 $sessionId, ${participants.size}명 처리" }
     }
 
     // ==================== 헬퍼 메서드 ====================

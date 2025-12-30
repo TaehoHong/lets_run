@@ -73,6 +73,49 @@ class LeagueSessionService(
         return leagueSessionRepository.save(newSeason)
     }
 
+
+    /**
+     * 특정 티어의 활성 시즌 조회 또는 생성
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun getOrCreateActiveSeasonByTier(tierType: LeagueTierType): LeagueSession {
+        val existingSeason = leagueSessionRepository.findByTierIdAndState(tierType.id, LeagueSessionState.ACTIVE)
+        if (existingSeason != null) {
+            return existingSeason
+        }
+
+        // 활성 시즌이 없으면 새로 생성
+        val (startDatetime, endDatetime) = calculateSeasonPeriod()
+        val newSeason = LeagueSession(
+            tier = LeagueTier(tierType),
+            startDatetime = startDatetime,
+            endDatetime = endDatetime,
+            isActive = true,
+            state = LeagueSessionState.ACTIVE
+        )
+        return leagueSessionRepository.save(newSeason).also {
+            logger.info { "티어 ${tierType.name} 새 시즌 자동 생성: ${it.id}" }
+        }
+    }
+
+    /**
+     * 러닝 종료 시간을 포함하는 활성 시즌 찾기
+     * - 종료 시간 기준으로 시즌 귀속
+     */
+    @Transactional(readOnly = true)
+    fun findActiveSeasonContaining(runningEndedAt: OffsetDateTime, tierType: LeagueTierType): LeagueSession? {
+        val activeSeason = leagueSessionRepository.findByTierIdAndState(tierType.id, LeagueSessionState.ACTIVE)
+            ?: return null
+
+        // 종료 시간이 시즌 기간 내인지 확인
+        if (runningEndedAt.isAfter(activeSeason.startDatetime) &&
+            (runningEndedAt.isBefore(activeSeason.endDatetime) || runningEndedAt.isEqual(activeSeason.endDatetime))) {
+            return activeSeason
+        }
+
+        return null
+    }
+
     // ==================== 시즌 상태 전이 (State Machine) ====================
 
     /**
@@ -145,46 +188,6 @@ class LeagueSessionService(
         return season
     }
 
-    // ==================== 러닝 기록 귀속 검증 ====================
-
-    /**
-     * 러닝 기록이 현재 시즌에 귀속 가능한지 확인
-     * - 러닝 시작 시간 기준으로 시즌 귀속
-     * - Grace Period: 15분
-     * - 지연 업로드: 시즌 종료 후 24시간까지
-     */
-//    fun canAcceptRunningRecord(runningStartedAt: OffsetDateTime): Pair<Boolean, LeagueSession?> {
-//        val currentSeason = getCurrentSeason()
-//
-//        // 활성 시즌이 있고, 러닝 시작 시간이 시즌 기간 내인 경우
-//        if (currentSeason != null && currentSeason.canAcceptNewRecords()) {
-//            val seasonStart = currentSeason.startDatetime.minusMinutes(GRACE_PERIOD_MINUTES)
-//            val seasonEnd = currentSeason.endDatetime.plusMinutes(GRACE_PERIOD_MINUTES)
-//
-//            if (runningStartedAt.isAfter(seasonStart) && runningStartedAt.isBefore(seasonEnd)) {
-//                return Pair(true, currentSeason)
-//            }
-//        }
-//
-//        // AUDITING 상태에서 지연 업로드 허용
-//        val latestSeason = getLatestSeason()
-//        if (latestSeason != null && latestSeason.canAcceptLateRecords()) {
-//            val uploadDeadline = latestSeason.endDatetime.plusHours(LATE_UPLOAD_GRACE_HOURS)
-//            val now = OffsetDateTime.now(UTC)
-//
-//            if (now.isBefore(uploadDeadline)) {
-//                // 러닝 시작 시간이 해당 시즌 기간 내인지 확인
-//                val seasonStart = latestSeason.startDatetime.minusMinutes(GRACE_PERIOD_MINUTES)
-//                val seasonEnd = latestSeason.endDatetime.plusMinutes(GRACE_PERIOD_MINUTES)
-//
-//                if (runningStartedAt.isAfter(seasonStart) && runningStartedAt.isBefore(seasonEnd)) {
-//                    return Pair(true, latestSeason)
-//                }
-//            }
-//        }
-//
-//        return Pair(false, null)
-//    }
 
     /**
      * 시즌 기간 계산: 월요일 00:00 ~ 일요일 23:59:59 (KST)

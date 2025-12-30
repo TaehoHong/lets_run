@@ -16,16 +16,6 @@ import kotlin.random.Random
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * 봇 관리 서비스
- *
- * 노션 기획서 봇 정책:
- * - 점진적 봇 투입: 시즌 시작 3시간 후부터 24시간까지 제곱 곡선(t²)으로 투입
- * - 24시간 이후: 20명 미달 시 즉시 20명까지 채움
- * - 시즌 중 봇은 절대 제거하지 않음
- *
- * @see <a href="https://www.notion.so/2cc405e9dd388175bf1cf008612a3876">리그 기획서</a>
- */
 @Service
 class BotManagementService(
     private val leagueSessionService: LeagueSessionService,

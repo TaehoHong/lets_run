@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository
 interface LeagueSessionRepository : JpaRepository<LeagueSession, Long>, QLeagueSessionRepository {
 
     fun findByIsActiveTrue(): LeagueSession?
+
+    fun findByTierIdAndState(tierId: Int, state: LeagueSessionState): LeagueSession?
 }
 
 

@@ -7,6 +7,8 @@ import com.example.running.domain.running.service.dto.EndRunningDto
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class RunningEndService(
@@ -24,7 +26,8 @@ class RunningEndService(
                 durationSec = updateRunningDto.durationSec,
                 cadence = updateRunningDto.cadence,
                 heartRate = updateRunningDto.heartRate,
-                calorie = updateRunningDto.calorie
+                calorie = updateRunningDto.calorie,
+                endDatetime = updateRunningDto.endDatetime ?: OffsetDateTime.now(ZoneOffset.UTC)
             )
         )
 
