@@ -25,7 +25,7 @@ class RunningRecordSearchRequest(
 
 class RunningRecordSearchResponse(
     val id: Long,
-    val distance: Long,
+    val distance: Int,
     val durationSec: Long,
     val cadence: Short,
     val heartRate: Short,

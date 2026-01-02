@@ -23,7 +23,7 @@ class RunningRecord(
     var shoe: Shoe? = null,
 
     @Column(name = "distance", nullable = false)
-    var distance: Long = 0,
+    var distance: Int = 0,
 
     @Column(name = "duration_sec", nullable = false)
     var durationSec: Long = 0,
@@ -69,7 +69,7 @@ class RunningRecord(
     )
 
     fun update(shoeId: Long?,
-               distance: Long?,
+               distance: Int?,
                durationSec: Long?,
                cadence: Short?,
                heartRate: Short?,

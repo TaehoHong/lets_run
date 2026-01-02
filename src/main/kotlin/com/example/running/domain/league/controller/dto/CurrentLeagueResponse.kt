@@ -38,6 +38,7 @@ data class ParticipantResponse(
     val id: Long,
     val rank: Int,
     val nickname: String?,
+    val profileImageUrl: String?,
     val distance: Long,
     val isMe: Boolean,
     val isBot: Boolean
@@ -48,6 +49,7 @@ data class ParticipantResponse(
                 id = dto.id,
                 rank = dto.rank,
                 nickname = dto.nickname,
+                profileImageUrl = dto.profileImageUrl,
                 distance = dto.totalDistance,
                 isMe = dto.isMe,
                 isBot = dto.isBot

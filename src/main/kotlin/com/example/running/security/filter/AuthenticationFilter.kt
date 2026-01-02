@@ -71,7 +71,7 @@ class AuthenticationFilter(
             }
     }
 
-    private fun verifyToken(token: String, response: HttpServletResponse) {
+    private fun verifyToken(token: String, response: HttpServletResponse): Boolean {
         runCatching {
             tokenService.verify(token)
         }.onFailure { exception ->
@@ -85,6 +85,9 @@ class AuthenticationFilter(
             response.status = HttpServletResponse.SC_UNAUTHORIZED
             response.contentType = MediaType.APPLICATION_JSON_VALUE
             response.writer.write(objectMapper.writeValueAsString(errorResponse))
+            response.writer.flush()
+            return false
         }
+        return true
     }
 }

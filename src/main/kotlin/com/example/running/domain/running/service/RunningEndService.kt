@@ -5,6 +5,7 @@ import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
 import com.example.running.domain.running.service.dto.EndRunningDto
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
+import com.example.running.utils.alsoIf
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -32,15 +33,17 @@ class RunningEndService(
         )
 
         // 기본 러닝 포인트 지급
-        val totalEarnedPoints = calculatePoint(updateRunningDto.distance ?: 0)
-        userPointService.updatePoint(
-            PointUsageDto(
-                userId = updateRunningDto.userId,
-                runningRecordId = updateRunningDto.runningRecordId,
-                point = totalEarnedPoints,
-                pointTypeId = PointTypeName.RUNNING.id
-            )
-        )
+        calculatePoint(updateRunningDto.distance ?: 0)
+            .alsoIf({it > 0}) { totalEarnedPoints ->
+                userPointService.updatePoint(
+                    PointUsageDto(
+                        userId = updateRunningDto.userId,
+                        runningRecordId = updateRunningDto.runningRecordId,
+                        point = totalEarnedPoints,
+                        pointTypeId = PointTypeName.RUNNING.id
+                    )
+                )
+            }
 
         // 총 획득 포인트 (기본 + 보너스)
         val userPoint = userPointService.getOrCreateByUserId(updateRunningDto.userId)
@@ -52,5 +55,5 @@ class RunningEndService(
         100m당 1 point
         distance unit: meter
      */
-    private fun calculatePoint(distance: Long) = distance.toInt()/100
+    private fun calculatePoint(distance: Int) = distance.toInt()/100
 }

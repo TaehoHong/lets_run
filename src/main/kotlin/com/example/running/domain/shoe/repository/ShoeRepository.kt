@@ -18,6 +18,7 @@ interface QShoeRepository {
     fun hasNext(userId: Long, isEnabled: Boolean?, id: Long): Boolean
     fun updateIsMainByUserId(userId: Long, isMain: Boolean): Long
     fun updateIsMainByIdAndUserId(id:Long, userId: Long, isMain: Boolean): Long
+    fun updateTotalDistanceById(id: Long, distance: Int): Long
 }
 
 
@@ -63,5 +64,12 @@ class QShoeRepositoryImpl(private val queryFactory: JPAQueryFactory): QShoeRepos
                 shoe.id.eq(id),
                 shoe.user.id.eq(userId)
             ).execute()
+    }
+
+    override fun updateTotalDistanceById(id: Long, distance: Int): Long {
+        return queryFactory.update(shoe)
+            .set(shoe.totalDistance, distance)
+            .where(shoe.id.eq(id))
+            .execute()
     }
 }

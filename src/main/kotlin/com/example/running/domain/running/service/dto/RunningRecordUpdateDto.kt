@@ -6,7 +6,7 @@ class RunningRecordUpdateDto(
     val userId: Long,
     val runningRecordId: Long,
     val shoeId: Long? = null,
-    val distance: Long? = null,
+    val distance: Int? = null,
     val durationSec: Long? = null,
     val cadence: Short? = null,
     val heartRate: Short? = null,

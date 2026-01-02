@@ -7,5 +7,7 @@ data class OAuthTokenDto(
     @JsonProperty(value = "access_token")
     val accessToken: String,
     @JsonProperty(value = "id_token")
-    val idToken: String
+    val idToken: String,
+    @JsonProperty(value = "refresh_token")
+    val refreshToken: String? = null
 )

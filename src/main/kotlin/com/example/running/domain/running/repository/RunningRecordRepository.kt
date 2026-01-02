@@ -26,6 +26,7 @@ interface QRunningRecordRepository {
 
     fun findAllByCursor(userId: Long, request: RunningRecordSearchRequest): List<RunningRecord>
     fun existsByCursor(userId: Long, cursor: Long?, request: RunningRecordSearchRequest): Boolean
+    fun findAllDistanceByShoeId(shoeId: Long): List<Int>
 
 }
 
@@ -98,5 +99,15 @@ class QRunningRecordRepositoryImpl(
         }
 
         return booleanBuilder
+    }
+
+    override fun findAllDistanceByShoeId(shoeId: Long): List<Int> {
+        return queryFactory.select(runningRecord.distance)
+            .from(runningRecord)
+            .where(
+                runningRecord.shoe.id.eq(shoeId),
+                runningRecord.isEnd.isTrue,
+                runningRecord.isStatisticIncluded.isTrue
+            ).fetch()
     }
 }

@@ -6,7 +6,7 @@ class EndRunningDto(
     val userId: Long,
     val shoeId: Long?,
     val runningRecordId: Long,
-    val distance: Long,
+    val distance: Int,
     val durationSec: Long,
     val cadence: Short,
     val heartRate: Short,

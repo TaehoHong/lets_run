@@ -10,7 +10,7 @@ class RunningStatistics(
 ) {
     val statisticType: RunningStatisticType
     val chartData: List<RunningChartDto>
-    val totalDistance: Long
+    val totalDistance: Int
     val totalDurationSec: Long
     val averageDistance: Int
     val averagePaceSec: Double
@@ -49,10 +49,10 @@ class RunningStatistics(
 data class RunningChartDto(
     var datetime: String,
     var paceSec: Double = 0.0,
-    var distance: Long = 0,
+    var distance: Int = 0,
     var durationSec: Long = 0
 ) {
-    fun addData(distance: Long, durationSec: Long): RunningChartDto {
+    fun addData(distance: Int, durationSec: Long): RunningChartDto {
         this.distance += distance
         this.durationSec += durationSec
         this.paceSec = this.durationSec.toDouble() / (distance / 1000.0)

@@ -76,4 +76,9 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
         return shoeRepository.findShoeByUserIdAndIsMain(userId, true)
             ?.let { ShoeDto(it) }
     }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateTotalDistance(id: Long, distance: Int) {
+        shoeRepository.updateTotalDistanceById(id, distance)
+    }
 }

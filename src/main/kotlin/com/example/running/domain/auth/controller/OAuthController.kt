@@ -2,6 +2,7 @@ package com.example.running.domain.auth.controller
 
 import com.example.running.domain.auth.controller.dto.TokenResponse
 import com.example.running.domain.auth.service.OAuthService
+import com.example.running.domain.auth.service.OAuthTokenService
 import com.example.running.domain.auth.service.UserSignUpService
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.user.service.UserAgreementService
@@ -18,31 +19,32 @@ class OAuthController(
     private val oauthService: OAuthService,
     private val tokenService: TokenService,
     private val userSignUpService: UserSignUpService,
-    private val userAgreementService: UserAgreementService
+    private val userAgreementService: UserAgreementService,
+    private val oAuthTokenService: OAuthTokenService
 ) {
 
     private val log = KotlinLogging.logger {}
 
     @Operation(
-        summary = "구글 로그인/회원가입",
-        description = "구글 OAuth2 계정이 없는 경우 회원가입"
+        summary = "OAuth 로그인/회원가입",
+        description = "Google/Apple OAuth2 계정이 없는 경우 회원가입, Apple의 경우 refresh token 저장"
     )
     @GetMapping
     fun getToken(@PathVariable provider: String, @RequestParam code: String): TokenResponse {
         val accountTypeName = AccountTypeName.getByNameIgnoreCase(provider)
 
         return runCatching {
-            oauthService.getOAuthAccountInfo(accountTypeName, code)
-                .let {
-                    userSignUpService.signup(accountTypeName, it)
-                }.let { userAccount ->
-                    tokenService.generateTokens(
-                        userId = userAccount.user.id,
-                        nickname = userAccount.user.nickname,
-                        isAgreedOnTerms = userAgreementService.isAllTermsAgreed(userAccount.user.id),
-                        authorityType = userAccount.user.authorityType
-                    )
-                }.also { log.info { "access token : ${it.accessToken}" } }
+            val loginResult = oauthService.getOAuthLoginResult(accountTypeName, code)
+
+            val userAccount = userSignUpService.signup(accountTypeName, loginResult.accountInfo)
+            oAuthTokenService.saveOrUpdate(userAccount, loginResult.refreshToken)
+
+            tokenService.generateTokens(
+                userId = userAccount.user.id,
+                nickname = userAccount.user.nickname,
+                isAgreedOnTerms = userAgreementService.isAllTermsAgreed(userAccount.user.id),
+                authorityType = userAccount.user.authorityType
+            ).also { log.info { "access token : ${it.accessToken}" } }
         }.getOrElse {
             throw RuntimeException(it.message)
         }

@@ -5,7 +5,7 @@ import java.time.OffsetDateTime
 
 class RunningRecordDto(
     val id: Long,
-    val distance: Long,
+    val distance: Int,
     val durationSec: Long,
     val cadence: Short,
     val heartRate: Short,

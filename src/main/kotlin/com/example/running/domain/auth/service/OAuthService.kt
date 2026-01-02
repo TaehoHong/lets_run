@@ -5,6 +5,7 @@ import com.example.running.config.properties.CredentialProperties
 import com.example.running.config.properties.OAuthProperties
 import com.example.running.config.properties.OAuthUrl
 import com.example.running.domain.auth.service.dto.OAuthAccountInfoDto
+import com.example.running.domain.auth.service.dto.OAuthLoginResultDto
 import com.example.running.domain.auth.service.dto.OAuthTokenDto
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.security.service.TokenService
@@ -25,12 +26,19 @@ class OAuthService(
     private val GRANT_TYPE = "authorization_code"
     private val log = KotlinLogging.logger {}
 
-    fun getOAuthAccountInfo(accountType: AccountTypeName, code: String): OAuthAccountInfoDto {
-        return requestToken(accountType, code)
-            .let { oAuthTokenDto ->
-                val content = tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
-                objectMapper.readValue(content, OAuthAccountInfoDto::class.java)
-            }
+    /**
+     * OAuth 로그인 처리
+     * @return 계정 정보와 refresh token을 포함한 결과
+     */
+    fun getOAuthLoginResult(accountType: AccountTypeName, code: String): OAuthLoginResultDto {
+        val oAuthTokenDto = requestToken(accountType, code)
+        val content = tokenService.decodeTokenPayload(oAuthTokenDto.idToken)
+        val accountInfo = objectMapper.readValue(content, OAuthAccountInfoDto::class.java)
+
+        return OAuthLoginResultDto(
+            accountInfo = accountInfo,
+            refreshToken = oAuthTokenDto.refreshToken
+        )
     }
 
     private fun requestToken(accountType: AccountTypeName, code: String): OAuthTokenDto {
