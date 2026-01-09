@@ -109,6 +109,9 @@ class LeagueService(
         // 보상 포인트 계산 (승격/환생 시에만)
         val rewardPoints = LeagueResultDto.calculateRewardPoints(resultStatus, currentTier)
 
+        // 순위표용 참가자 조회
+        val rankedParticipants = leagueParticipantService.getRankedParticipants(session.id, userId)
+
         return LeagueResultDto(
             previousTier = previousTier,
             currentTier = currentTier,
@@ -116,7 +119,8 @@ class LeagueService(
             finalRank = participant.finalRank ?: 0,
             totalParticipants = totalParticipants,
             totalDistance = participant.totalDistance,
-            rewardPoints = rewardPoints
+            rewardPoints = rewardPoints,
+            participants = rankedParticipants
         )
     }
 

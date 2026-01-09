@@ -12,7 +12,8 @@ data class LeagueResultResponse(
     val finalRank: Int,
     val totalParticipants: Int,
     val totalDistance: Long,
-    val rewardPoints: Long?
+    val rewardPoints: Long?,
+    val participants: List<ParticipantResponse>
 ) {
     companion object {
         fun from(dto: LeagueResultDto): LeagueResultResponse {
@@ -23,7 +24,8 @@ data class LeagueResultResponse(
                 finalRank = dto.finalRank,
                 totalParticipants = dto.totalParticipants,
                 totalDistance = dto.totalDistance,
-                rewardPoints = dto.rewardPoints
+                rewardPoints = dto.rewardPoints,
+                participants = dto.participants.map { ParticipantResponse.from(it) }
             )
         }
     }

@@ -13,7 +13,8 @@ data class LeagueResultDto(
     val finalRank: Int,
     val totalParticipants: Int,
     val totalDistance: Long,
-    val rewardPoints: Long?
+    val rewardPoints: Long?,
+    val participants: List<LeagueParticipantDto>
 ) {
     companion object {
         /**
