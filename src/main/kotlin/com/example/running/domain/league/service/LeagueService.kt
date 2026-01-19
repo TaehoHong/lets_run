@@ -2,6 +2,7 @@ package com.example.running.domain.league.service
 
 import com.example.running.domain.league.entity.LeagueParticipant
 import com.example.running.domain.league.enums.LeagueTierType
+import com.example.running.domain.league.enums.PromotionStatus
 import com.example.running.domain.league.repository.LeagueParticipantRepository
 import com.example.running.domain.league.service.dto.CurrentLeagueDto
 import com.example.running.domain.league.service.dto.LeagueHistoryDto
@@ -62,25 +63,25 @@ class LeagueService(
 
     /**
      * 유저를 리그에 참가시킴 (신규 유저 또는 시즌 시작 시)
-     * 활성화된 세션이 없으면 자동으로 새 시즌을 생성
+     * 사용자의 현재 티어에 맞는 세션에 참여시킴
      */
     @Transactional(rollbackFor = [Exception::class])
     fun joinLeague(userId: Long): LeagueParticipant {
         val user = userRepository.findById(userId)
             .orElseThrow { RuntimeException("유저를 찾을 수 없습니다: $userId") }
 
-        // 활성 세션이 없으면 자동으로 새 시즌 생성
-        val session = leagueSessionService.getCurrentSeason()
-            ?: leagueSessionService.createNewSeason()
+        // 유저 리그 정보 조회 또는 생성 (먼저 실행하여 티어 정보 획득)
+        val userLeagueInfo = userLeagueInfoService.getOrCreateUserLeagueInfo(user)
+
+        // 사용자의 현재 티어에 맞는 세션 조회 또는 생성
+        val tierType = LeagueTierType.fromId(userLeagueInfo.currentTier.id)
+        val session = leagueSessionService.getOrCreateActiveSeasonByTier(tierType)
 
         // 이미 참가 중인지 확인
         val existingParticipant = leagueParticipantService.getCurrentParticipant(userId)
         if (existingParticipant != null) {
             return existingParticipant
         }
-
-        // 유저 리그 정보 조회 또는 생성
-        userLeagueInfoService.getOrCreateUserLeagueInfo(user)
 
         // 참가자 추가
         val participant = leagueParticipantService.addParticipant(session, user)
@@ -97,16 +98,24 @@ class LeagueService(
             ?: return null
 
         val session = participant.leagueSession
-        val currentTier = LeagueTierType.fromId(session.tier.id)
+        val sessionTier = LeagueTierType.fromId(session.tier.id)  // 정산 전 세션 티어
         val resultStatus = participant.promotionStatus ?: return null
+
+        // currentTier: 결과 적용 후의 티어로 계산
+        val currentTier = when (resultStatus) {
+            PromotionStatus.PROMOTED -> LeagueTierType.getNextTier(sessionTier) ?: sessionTier
+            PromotionStatus.RELEGATED -> LeagueTierType.getPreviousTier(sessionTier) ?: sessionTier
+            PromotionStatus.REBIRTH -> LeagueTierType.GOLD  // 환생 시 골드에서 다시 시작
+            PromotionStatus.MAINTAINED -> sessionTier
+        }
+
+        // previousTier: 정산 전 티어 (세션 티어)
+        val previousTier = sessionTier
 
         // 그룹 내 전체 참가자 수
         val totalParticipants = leagueParticipantService.countParticipants(session.id)
 
-        // 이전 티어 계산
-        val previousTier = LeagueResultDto.calculatePreviousTier(currentTier, resultStatus)
-
-        // 보상 포인트 계산 (승격/환생 시에만)
+        // 보상 포인트 계산 (승격/환생 시에만) - currentTier 기준으로 보상 지급
         val rewardPoints = LeagueResultDto.calculateRewardPoints(resultStatus, currentTier)
 
         // 순위표용 참가자 조회

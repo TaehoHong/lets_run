@@ -36,28 +36,5 @@ data class LeagueResultDto(
             }
         }
 
-        /**
-         * 이전 티어 계산 (결과 상태 기반)
-         */
-        fun calculatePreviousTier(currentTier: LeagueTierType, status: PromotionStatus): LeagueTierType {
-            return when (status) {
-                PromotionStatus.PROMOTED -> {
-                    // 승격했으면 이전 티어는 한 단계 아래
-                    LeagueTierType.getPreviousTier(currentTier) ?: currentTier
-                }
-                PromotionStatus.RELEGATED -> {
-                    // 강등됐으면 이전 티어는 한 단계 위
-                    LeagueTierType.getNextTier(currentTier) ?: currentTier
-                }
-                PromotionStatus.REBIRTH -> {
-                    // 환생이면 이전 티어는 CHALLENGER
-                    LeagueTierType.CHALLENGER
-                }
-                PromotionStatus.MAINTAINED -> {
-                    // 유지면 동일
-                    currentTier
-                }
-            }
-        }
     }
 }
