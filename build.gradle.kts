@@ -23,28 +23,8 @@ noArg {
 }
 
 
-// Read version from version.txt (synced from root package.json SSOT)
-fun getVersionFromFile(): String {
-    val versionFile = File(rootDir, "version.txt")
-    return if (versionFile.exists()) {
-        versionFile.readText().trim()
-    } else {
-        // Fallback: read from root package.json
-        val rootPackageJson = File(rootDir.parentFile, "package.json")
-        if (rootPackageJson.exists()) {
-            @Suppress("UNCHECKED_CAST")
-            val json = JsonSlurper().parseText(rootPackageJson.readText()) as Map<String, Any>
-            val config = json["config"] as? Map<String, Any>
-            val versions = config?.get("versions") as? Map<String, String>
-            versions?.get("backend") ?: "0.0.1"
-        } else {
-            "0.0.1"
-        }
-    }
-}
-
 group = "com.example"
-version = getVersionFromFile()
+version = "1.0.0"
 
 java {
     toolchain {
