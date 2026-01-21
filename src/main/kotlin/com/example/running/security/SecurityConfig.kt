@@ -81,6 +81,9 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/terms").authenticated()
 
+                // App
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/app/version-check").permitAll()
+
                 // League
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/current").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/profile").authenticated()
