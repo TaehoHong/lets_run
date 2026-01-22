@@ -8,16 +8,10 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface UserAccountRepository : JpaRepository<UserAccount, Long>, QUserAccountRepository {
-
-    fun existsByEmail(email: String): Boolean
-
-    fun findByEmail(email: String): UserAccount?
-
     /**
-     * 활성화된 계정만 조회 (is_deleted=false)
-     * 회원탈퇴 후 재가입 시 삭제된 계정과 구분하기 위해 사용
+     * 이메일, 계정 타입, 삭제 여부로 조회
      */
-    fun findByEmailAndIsDeletedFalse(email: String): UserAccount?
+    fun findByEmailAndAccountTypeIdAndIsDeletedFalse(email: String, accountTypeId: Short): UserAccount?
 
     /**
      * 활성화된 계정 존재 여부 확인 (is_deleted=false)

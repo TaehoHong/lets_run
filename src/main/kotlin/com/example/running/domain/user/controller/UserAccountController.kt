@@ -31,6 +31,8 @@ class UserAccountController(
         return authenticateWithUser { userId ->
             val loginResult = oAuthService.getOAuthLoginResult(request.provider, request.code)
 
+            userAccountService.verifyEmailIsNotExists(loginResult.accountInfo.email)
+
             val userAccount = userAccountService.save(
                 user = userService.getById(userId),
                 email = loginResult.accountInfo.email,

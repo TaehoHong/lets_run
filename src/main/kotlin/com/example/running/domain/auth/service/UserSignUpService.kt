@@ -26,15 +26,11 @@ class UserSignUpService(
 
     @Transactional(rollbackFor = [Exception::class])
     fun signup(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfoDto): UserAccount {
-        val existingAccount = userAccountService.getByEmail(oAuthAccountInfo.email)
-        
-        return when {
-            // 계정이 없거나 삭제된 계정인 경우 → 새로 생성
-            existingAccount == null || existingAccount.isDeleted ->
-                createUserAndGetUserAccount(accountType, oAuthAccountInfo)
-            // 활성 계정인 경우 → 기존 계정 반환
-            else -> existingAccount
-        }
+        // 동일 이메일이 다른 provider로 등록될 수 있으므로 email + accountType + isDeleted=false로 조회
+        val existingAccount = userAccountService.getByEmailAndAccountType(oAuthAccountInfo.email, accountType)
+
+        // 활성 계정이 있으면 반환, 없으면 새로 생성
+        return existingAccount ?: createUserAndGetUserAccount(accountType, oAuthAccountInfo)
     }
 
     private fun createUserAndGetUserAccount(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfoDto): UserAccount {
@@ -50,7 +46,7 @@ class UserSignUpService(
             userPointService.save(userId = user.id)
             userAgreementService.createDefault(user)
         }.let {
-            userAccountService.getByEmail(it.email)
+            userAccountService.getByEmailAndAccountType(it.email, accountType)
                 ?: run { throw RuntimeException(ApiError.NOT_FOUND_USER_ACCOUNT.message) }
         }
     }

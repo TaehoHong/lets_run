@@ -40,8 +40,8 @@ class UserAccountService(
     }
 
     @Transactional(readOnly = true)
-    fun getByEmail(email: String): UserAccount? {
-        return userAccountRepository.findByEmail(email)
+    fun getByEmailAndAccountType(email: String, accountType: AccountTypeName): UserAccount? {
+        return userAccountRepository.findByEmailAndAccountTypeIdAndIsDeletedFalse(email, accountType.id)
     }
 
     @Transactional(rollbackFor = [Exception::class])
