@@ -1,5 +1,6 @@
 package com.example.running.domain.user.service
 
+import com.example.running.domain.auth.service.OAuthTokenService
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.entity.UserAccount
@@ -13,12 +14,14 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class UserAccountService(
     private val passwordEncoder: PasswordEncoder,
-    private val userAccountRepository: UserAccountRepository
+    private val userAccountRepository: UserAccountRepository,
+    private val oAuthTokenService: OAuthTokenService
 ) {
 
     @Transactional(readOnly = true)
     fun verifyEmailIsNotExists(email: String) {
-        userAccountRepository.existsByEmail(email)
+        // 활성화된 계정만 확인 (탈퇴한 계정은 제외)
+        userAccountRepository.existsByEmailAndIsDeletedFalse(email)
             .alsoIfTrue {
                 throw RuntimeException("이미 존재하는 이메일입니다.")
             }
@@ -42,8 +45,21 @@ class UserAccountService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun softDelete(id: Long, userId: Long) {
-        userAccountRepository.updateIsDeleted(true, id, userId)
+    fun hardDelete(id: Long, userId: Long) {
+        // 1. 권한 확인: 해당 계정이 현재 사용자 소유인지 확인
+        val userAccount = userAccountRepository.findById(id).orElseThrow {
+            RuntimeException("계정을 찾을 수 없습니다.")
+        }
+
+        if (userAccount.user.id != userId) {
+            throw RuntimeException("삭제 권한이 없습니다.")
+        }
+
+        // 2. OAuth Token 먼저 삭제 (FK 제약)
+        oAuthTokenService.deleteByUserAccountId(id)
+
+        // 3. UserAccount 삭제
+        userAccountRepository.deleteById(id)
     }
 
     @Transactional

@@ -12,6 +12,18 @@ interface UserAccountRepository : JpaRepository<UserAccount, Long>, QUserAccount
     fun existsByEmail(email: String): Boolean
 
     fun findByEmail(email: String): UserAccount?
+
+    /**
+     * 활성화된 계정만 조회 (is_deleted=false)
+     * 회원탈퇴 후 재가입 시 삭제된 계정과 구분하기 위해 사용
+     */
+    fun findByEmailAndIsDeletedFalse(email: String): UserAccount?
+
+    /**
+     * 활성화된 계정 존재 여부 확인 (is_deleted=false)
+     * 회원탈퇴 후 재가입 시 삭제된 계정과 구분하기 위해 사용
+     */
+    fun existsByEmailAndIsDeletedFalse(email: String): Boolean
 }
 
 interface QUserAccountRepository {

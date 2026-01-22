@@ -22,7 +22,7 @@ class UserAccountController(
     @DeleteMapping("/{id}")
     fun deleteAccount(@PathVariable id: Long) {
         authenticateWithUser { userId ->
-            userAccountService.softDelete(userId, id)
+            userAccountService.hardDelete(id, userId)
         }
     }
 

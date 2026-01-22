@@ -58,4 +58,13 @@ class OAuthTokenService(
         oAuthTokenRepository.deleteAllByUserId(userId)
         log.debug { "Deleted all OAuth tokens for userId: $userId" }
     }
+
+    /**
+     * UserAccount ID로 OAuth 토큰 삭제
+     */
+    @Transactional
+    fun deleteByUserAccountId(userAccountId: Long) {
+        oAuthTokenRepository.deleteByUserAccountId(userAccountId)
+        log.debug { "Deleted OAuth token for userAccountId: $userAccountId" }
+    }
 }

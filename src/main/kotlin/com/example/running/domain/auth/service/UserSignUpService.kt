@@ -26,8 +26,15 @@ class UserSignUpService(
 
     @Transactional(rollbackFor = [Exception::class])
     fun signup(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfoDto): UserAccount {
-        return (userAccountService.getByEmail(oAuthAccountInfo.email)
-            ?: createUserAndGetUserAccount(accountType, oAuthAccountInfo))
+        val existingAccount = userAccountService.getByEmail(oAuthAccountInfo.email)
+        
+        return when {
+            // 계정이 없거나 삭제된 계정인 경우 → 새로 생성
+            existingAccount == null || existingAccount.isDeleted ->
+                createUserAndGetUserAccount(accountType, oAuthAccountInfo)
+            // 활성 계정인 경우 → 기존 계정 반환
+            else -> existingAccount
+        }
     }
 
     private fun createUserAndGetUserAccount(accountType: AccountTypeName, oAuthAccountInfo: OAuthAccountInfoDto): UserAccount {

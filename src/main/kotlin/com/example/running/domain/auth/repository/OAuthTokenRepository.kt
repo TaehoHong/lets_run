@@ -17,4 +17,6 @@ interface OAuthTokenRepository : JpaRepository<OAuthToken, Long> {
     @Modifying
     @Query("DELETE FROM OAuthToken o WHERE o.userAccount.user.id = :userId")
     fun deleteAllByUserId(userId: Long)
+
+    fun deleteByUserAccountId(userAccountId: Long)
 }
