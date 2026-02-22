@@ -14,6 +14,7 @@ import java.time.OffsetDateTime
 interface RunningRecordRepository : JpaRepository<RunningRecord, Long>, QRunningRecordRepository {
 
     fun findByIdAndUserId(id: Long, userId: Long): RunningRecord?
+    fun existsByIdAndUserId(id: Long, userId: Long): Boolean
 }
 
 interface QRunningRecordRepository {

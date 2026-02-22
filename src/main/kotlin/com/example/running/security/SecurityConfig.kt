@@ -71,6 +71,7 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/statistics").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/*/items").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/*/items").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points/histories").authenticated()
 

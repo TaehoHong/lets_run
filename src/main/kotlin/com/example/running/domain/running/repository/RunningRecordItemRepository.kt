@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 
 interface RunningRecordItemRepository: JpaRepository<RunningRecordItem, Long>, RunningRecordItemJdbcRepository {
+    fun findAllByRunningRecord_IdOrderByOrderIndexAsc(runningRecordId: Long): List<RunningRecordItem>
 }
 
 @Repository
@@ -37,9 +38,9 @@ class RunningRecordItemJdbcRepositoryImpl(
         val sql = """
             INSERT INTO running_record_item(
                 running_record_id, distance, duration_sec, cadence, heart_rate, 
-                min_heart_rate, max_heart_rate, order_index, start_datetime, 
-                end_datetime
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                min_heart_rate, max_heart_rate, order_index, start_datetime,
+                end_datetime, gps_points_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """.trimIndent()
 
         val batchArgs = records.map { record ->
@@ -53,7 +54,8 @@ class RunningRecordItemJdbcRepositoryImpl(
                 record.maxHeartRate,
                 record.orderIndex,
                 record.startDatetime,
-                record.endDatetime
+                record.endDatetime,
+                record.gpsPointsJson
             )
         }
 

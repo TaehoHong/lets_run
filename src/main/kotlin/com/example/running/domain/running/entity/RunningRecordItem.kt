@@ -39,6 +39,10 @@ class RunningRecordItem(
     val startDatetime: OffsetDateTime,
 
     @Column(name = "end_datetime",nullable = false, columnDefinition = "DATETIME")
-    val endDatetime: OffsetDateTime
+    val endDatetime: OffsetDateTime,
+
+    @Lob
+    @Column(name = "gps_points_json", columnDefinition = "LONGTEXT")
+    val gpsPointsJson: String? = null
 
 ): CreatedDatetime()
