@@ -3,6 +3,7 @@ package com.example.running.domain.running.service
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
+import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.running.service.dto.EndRunningDto
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.utils.alsoIf
@@ -15,6 +16,7 @@ import java.time.ZoneOffset
 class RunningEndService(
     private val runningRecordService: RunningRecordService,
     private val userPointService: UserPointService,
+    private val runningRecordRepository: RunningRecordRepository,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -34,11 +36,12 @@ class RunningEndService(
 
         // 기본 러닝 포인트 지급
         calculatePoint(updateRunningDto.distance ?: 0)
-            .alsoIf({it > 0}) { totalEarnedPoints ->
+            .alsoIf({ it > 0 && runningRecordRepository.markPointAwardedIfEligible(updateRunningDto.userId, runningRecord.id) }) { totalEarnedPoints ->
+                runningRecord.pointAwarded = true
                 userPointService.updatePoint(
                     PointUsageDto(
                         userId = updateRunningDto.userId,
-                        runningRecordId = updateRunningDto.runningRecordId,
+                        runningRecordId = runningRecord.id,
                         point = totalEarnedPoints,
                         pointTypeId = PointTypeName.RUNNING.id
                     )

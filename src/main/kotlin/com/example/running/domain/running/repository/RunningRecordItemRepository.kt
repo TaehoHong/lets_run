@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository
 
 interface RunningRecordItemRepository: JpaRepository<RunningRecordItem, Long>, RunningRecordItemJdbcRepository {
     fun findAllByRunningRecord_IdOrderByOrderIndexAsc(runningRecordId: Long): List<RunningRecordItem>
+    fun deleteAllByRunningRecord_Id(runningRecordId: Long)
 }
 
 @Repository

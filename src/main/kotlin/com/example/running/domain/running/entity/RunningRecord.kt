@@ -1,6 +1,7 @@
 package com.example.running.domain.running.entity
 
 import com.example.running.domain.common.entity.CreatedDatetime
+import com.example.running.domain.running.enums.RunningRecordSource
 import com.example.running.domain.shoe.entity.Shoe
 import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
@@ -49,6 +50,24 @@ class RunningRecord(
     @Column(name = "is_end", nullable = false)
     var isEnd: Boolean = false,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, columnDefinition = "VARCHAR(20)")
+    var source: RunningRecordSource = RunningRecordSource.LIVE,
+
+    @Column(name = "external_id", columnDefinition = "VARCHAR(191)")
+    var externalId: String? = null,
+
+    @Column(name = "imported_datetime", columnDefinition = "DATETIME")
+    var importedDatetime: OffsetDateTime? = null,
+
+    @ColumnDefault("1")
+    @Column(name = "point_eligible", nullable = false)
+    var pointEligible: Boolean = true,
+
+    @ColumnDefault("0")
+    @Column(name = "point_awarded", nullable = false)
+    var pointAwarded: Boolean = false,
+
     @Column(name = "start_datetime", nullable = false, columnDefinition = "DATETIME")
     var startDatetime: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
 
@@ -87,4 +106,25 @@ class RunningRecord(
         startDatetime?.also { this.startDatetime = it }
         endDatetime?.also { this.endDatetime = it }
     }
+
+    fun updateImported(
+        distance: Int,
+        durationSec: Long,
+        cadence: Short,
+        heartRate: Short,
+        calorie: Int,
+        startDatetime: OffsetDateTime,
+        endDatetime: OffsetDateTime
+    ) {
+        this.isEnd = true
+        this.distance = distance
+        this.durationSec = durationSec
+        this.cadence = cadence
+        this.heartRate = heartRate
+        this.calorie = calorie
+        this.startDatetime = startDatetime
+        this.endDatetime = endDatetime
+        this.importedDatetime = OffsetDateTime.now(ZoneOffset.UTC)
+    }
+
 }

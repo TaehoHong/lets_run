@@ -15,7 +15,7 @@ class EndRunningDto(
 ) {
     constructor(record: RunningRecord, point: Int): this(
         userId = record.user.id,
-        runningRecordId = record.user.id,
+        runningRecordId = record.id,
         shoeId = record.shoe?.id,
         distance = record.distance,
         durationSec = record.durationSec,

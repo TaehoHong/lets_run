@@ -42,6 +42,8 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/users/me").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/configuration").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/users/configuration").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET,"/api/v1/users/*").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/verification/email").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users/accounts").authenticated()
@@ -65,6 +67,7 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/user-items").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/import-batch").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PUT, "/api/v1/running/*").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/*/end").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running").authenticated()

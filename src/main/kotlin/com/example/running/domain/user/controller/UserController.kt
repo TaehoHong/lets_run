@@ -3,8 +3,11 @@ package com.example.running.domain.user.controller
 import com.example.running.common.service.S3Service
 import com.example.running.domain.auth.controller.dto.VerificationEmailDto
 import com.example.running.domain.user.controller.dto.ProfileResponse
+import com.example.running.domain.user.controller.dto.UpdateUserConfigurationRequest
+import com.example.running.domain.user.controller.dto.UserConfigurationResponse
 import com.example.running.domain.user.dto.UserDataDto
 import com.example.running.domain.user.service.UserAccountService
+import com.example.running.domain.user.service.UserConfigurationService
 import com.example.running.domain.user.service.UserService
 import com.example.running.helper.authenticateWithUser
 import io.swagger.v3.oas.annotations.Operation
@@ -20,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile
 class UserController(
     val userAccountService: UserAccountService,
     val userService: UserService,
+    val userConfigurationService: UserConfigurationService,
     val s3Service: S3Service
 ) {
 
@@ -42,6 +46,25 @@ class UserController(
     fun getMe(): UserDataDto {
         return authenticateWithUser { userId ->
             userService.getUserDataDto(userId)
+        }
+    }
+
+    @GetMapping("/configuration")
+    fun getConfiguration(): UserConfigurationResponse {
+        return authenticateWithUser { userId ->
+            UserConfigurationResponse(userConfigurationService.getOrCreate(userId))
+        }
+    }
+
+    @PatchMapping("/configuration")
+    fun updateConfiguration(@RequestBody request: UpdateUserConfigurationRequest): UserConfigurationResponse {
+        return authenticateWithUser { userId ->
+            UserConfigurationResponse(
+                userConfigurationService.update(
+                    userId = userId,
+                    healthImportEnabled = request.healthImportEnabled
+                )
+            )
         }
     }
 
