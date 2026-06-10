@@ -7,6 +7,7 @@ import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
+import java.time.OffsetDateTime
 
 @Repository
 interface LeagueSessionRepository : JpaRepository<LeagueSession, Long>, QLeagueSessionRepository {
@@ -20,6 +21,7 @@ interface LeagueSessionRepository : JpaRepository<LeagueSession, Long>, QLeagueS
 interface QLeagueSessionRepository {
     fun findAllIdByStatus(state: LeagueSessionState, cursor: Long?, size: Long): List<Long>
     fun hasNext(state: LeagueSessionState, cursor: Long?): Boolean
+    fun findActiveByTierIdContaining(tierId: Int, now: OffsetDateTime): LeagueSession?
 }
 
 
@@ -46,6 +48,21 @@ class QLeagueSessionRepositoryImpl(
             .where(getWhereClause(state, cursor))
             .limit(1)
             .fetchOne() != null
+    }
+
+    override fun findActiveByTierIdContaining(tierId: Int, now: OffsetDateTime): LeagueSession? {
+        return queryFactory.selectFrom(leagueSession)
+            .where(
+                leagueSession.tier.id.eq(tierId),
+                leagueSession.state.eq(LeagueSessionState.ACTIVE),
+                leagueSession.startDatetime.loe(now),
+                leagueSession.endDatetime.goe(now)
+            )
+            .orderBy(
+                leagueSession.startDatetime.desc(),
+                leagueSession.id.desc()
+            )
+            .fetchFirst()
     }
 
     private fun getWhereClause(status: LeagueSessionState, cursor: Long?): BooleanBuilder {

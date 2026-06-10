@@ -1,12 +1,17 @@
 server:
-  name: running-backend
-  type: blue
+  port: ${SERVER_PORT:8080}
+  name: ${SERVER_NAME:running-backend}
+  type: ${SERVER_TYPE:blue}
+  shutdown: graceful
 
 spring:
   application:
     name: running
   config:
     import: optional:file:.env[.properties]
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver

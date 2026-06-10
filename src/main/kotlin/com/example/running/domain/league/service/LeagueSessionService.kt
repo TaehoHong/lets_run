@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.TemporalAdjusters
 
@@ -23,6 +24,7 @@ class LeagueSessionService(
 ) {
     companion object {
         private val UTC = ZoneOffset.UTC
+        private val SEOUL_ZONE = ZoneId.of("Asia/Seoul")
 
         // 지연 업로드 허용 시간 (24시간)
         const val LATE_UPLOAD_GRACE_HOURS = 24L
@@ -79,7 +81,8 @@ class LeagueSessionService(
      */
     @Transactional(rollbackFor = [Exception::class])
     fun getOrCreateActiveSeasonByTier(tierType: LeagueTierType): LeagueSession {
-        val existingSeason = leagueSessionRepository.findByTierIdAndState(tierType.id, LeagueSessionState.ACTIVE)
+        val now = OffsetDateTime.now(UTC)
+        val existingSeason = leagueSessionRepository.findActiveByTierIdContaining(tierType.id, now)
         if (existingSeason != null) {
             return existingSeason
         }
@@ -104,16 +107,7 @@ class LeagueSessionService(
      */
     @Transactional(readOnly = true)
     fun findActiveSeasonContaining(runningEndedAt: OffsetDateTime, tierType: LeagueTierType): LeagueSession? {
-        val activeSeason = leagueSessionRepository.findByTierIdAndState(tierType.id, LeagueSessionState.ACTIVE)
-            ?: return null
-
-        // 종료 시간이 시즌 기간 내인지 확인
-        if (runningEndedAt.isAfter(activeSeason.startDatetime) &&
-            (runningEndedAt.isBefore(activeSeason.endDatetime) || runningEndedAt.isEqual(activeSeason.endDatetime))) {
-            return activeSeason
-        }
-
-        return null
+        return leagueSessionRepository.findActiveByTierIdContaining(tierType.id, runningEndedAt)
     }
 
     // ==================== 시즌 상태 전이 (State Machine) ====================
@@ -193,7 +187,7 @@ class LeagueSessionService(
      * 시즌 기간 계산: 월요일 00:00 ~ 일요일 23:59:59 (KST)
      */
     private fun calculateSeasonPeriod(): Pair<OffsetDateTime, OffsetDateTime> {
-        val now = OffsetDateTime.now(UTC)
+        val now = OffsetDateTime.now(SEOUL_ZONE)
 
         // 이번 주 월요일 00:00
         val startDatetime = now
@@ -202,6 +196,7 @@ class LeagueSessionService(
             .withMinute(0)
             .withSecond(0)
             .withNano(0)
+            .withOffsetSameInstant(UTC)
 
         // 이번 주 일요일 23:59:59
         val endDatetime = now
@@ -210,6 +205,7 @@ class LeagueSessionService(
             .withMinute(59)
             .withSecond(59)
             .withNano(0)
+            .withOffsetSameInstant(UTC)
 
         return Pair(startDatetime, endDatetime)
     }

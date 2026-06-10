@@ -1,5 +1,6 @@
 package com.example.running.domain.running.service
 
+import com.example.running.domain.league.service.LeagueService
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
@@ -29,6 +30,7 @@ class RunningImportService(
     private val runningRecordItemRepository: RunningRecordItemRepository,
     private val userPointService: UserPointService,
     private val userConfigurationService: UserConfigurationService,
+    private val leagueService: LeagueService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -36,6 +38,16 @@ class RunningImportService(
         validateBatch(request)
 
         val configuration = userConfigurationService.getOrCreateForUpdate(userId)
+        if (!configuration.healthImportEnabled) {
+            return ImportRunningBatchResponse(
+                createdCount = 0,
+                updatedCount = 0,
+                duplicateCount = 0,
+                awardedPoint = 0,
+                leagueDistanceChanged = false,
+            )
+        }
+
         val previousLastSyncedAt = configuration.healthImportLastSyncedAt
         val requestMaxEndDatetime = request.records
             .map { convertToOffsetDateTime(it.endTimestamp) }
@@ -45,13 +57,19 @@ class RunningImportService(
             importOne(userId, recordRequest, previousLastSyncedAt)
         }
         resolveNextLastSyncedAt(userId, previousLastSyncedAt, requestMaxEndDatetime)
-            ?.let { configuration.markHealthImportSynced(it) }
+            ?.let { configuration.markHealthImportLastSynced(it) }
+        val leagueDistanceChanged = if (results.any { it.leagueSyncTarget != null }) {
+            leagueService.raiseCurrentLeagueDistance(userId)
+        } else {
+            false
+        }
 
         return ImportRunningBatchResponse(
             createdCount = results.count { it.status == ImportRunningRecordStatus.CREATED },
             updatedCount = results.count { it.status == ImportRunningRecordStatus.UPDATED },
             duplicateCount = results.count { it.status == ImportRunningRecordStatus.DUPLICATE },
             awardedPoint = results.sumOf { it.awardedPoint },
+            leagueDistanceChanged = leagueDistanceChanged,
         )
     }
 
@@ -75,6 +93,7 @@ class RunningImportService(
             return ImportResult(
                 status = ImportRunningRecordStatus.UPDATED,
                 awardedPoint = 0,
+                leagueSyncTarget = sameExternalRecord,
             )
         }
 
@@ -82,16 +101,6 @@ class RunningImportService(
             .firstOrNull { candidate -> isDuplicateCandidate(candidate, request, startDatetime, endDatetime) }
 
         if (overlapRecord != null) {
-            if (shouldReplaceHealthRepresentative(overlapRecord, request)) {
-                overlapRecord.updateImported(request, startDatetime, endDatetime)
-                replaceItems(overlapRecord.id, request)
-                val awardedPoint = awardPointIfNeeded(userId, overlapRecord)
-                return ImportResult(
-                    status = ImportRunningRecordStatus.UPDATED,
-                    awardedPoint = awardedPoint,
-                )
-            }
-
             return ImportResult(
                 status = ImportRunningRecordStatus.DUPLICATE,
                 awardedPoint = 0,
@@ -125,6 +134,7 @@ class RunningImportService(
         return ImportResult(
             status = ImportRunningRecordStatus.CREATED,
             awardedPoint = awardedPoint,
+            leagueSyncTarget = savedRecord,
         )
     }
 
@@ -235,30 +245,6 @@ class RunningImportService(
         return abs(left - right).toDouble() / denominator <= SAME_RUN_DISTANCE_DIFF_RATIO
     }
 
-    private fun shouldReplaceHealthRepresentative(existingRecord: RunningRecord, request: ImportRunningRecordRequest): Boolean {
-        if (existingRecord.source == RunningRecordSource.LIVE) return false
-        return importQualityScore(request) > recordQualityScore(existingRecord)
-    }
-
-    private fun importQualityScore(request: ImportRunningRecordRequest): Int {
-        return listOf(
-            if (request.items.any { it.gpsPoints.isNotEmpty() }) 100 else 0,
-            if (request.heartRate > 0) 10 else 0,
-            if (request.calorie > 0) 10 else 0,
-            min(request.durationSec / 60, 9).toInt(),
-        ).sum()
-    }
-
-    private fun recordQualityScore(record: RunningRecord): Int {
-        val items = runningRecordItemRepository.findAllByRunningRecord_IdOrderByOrderIndexAsc(record.id)
-        return listOf(
-            if (items.any { !it.gpsPointsJson.isNullOrBlank() && it.gpsPointsJson != "[]" }) 100 else 0,
-            if (record.heartRate > 0) 10 else 0,
-            if (record.calorie > 0) 10 else 0,
-            min(record.durationSec / 60, 9).toInt(),
-        ).sum()
-    }
-
     private fun awardPointIfNeeded(userId: Long, record: RunningRecord): Int {
         val point = record.distance / 100
         if (point <= 0) return 0
@@ -315,5 +301,6 @@ class RunningImportService(
     private data class ImportResult(
         val status: ImportRunningRecordStatus,
         val awardedPoint: Int,
+        val leagueSyncTarget: RunningRecord? = null,
     )
 }

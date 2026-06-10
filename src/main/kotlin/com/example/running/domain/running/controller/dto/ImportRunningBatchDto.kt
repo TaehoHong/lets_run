@@ -40,4 +40,5 @@ class ImportRunningBatchResponse(
     val updatedCount: Int,
     val duplicateCount: Int,
     val awardedPoint: Int,
+    val leagueDistanceChanged: Boolean = false,
 )

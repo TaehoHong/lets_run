@@ -26,9 +26,23 @@ class LeagueParticipantService(
         participant.addDistance(distance)
     }
 
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateTotalDistanceIfHigher(participantId: Long, distance: Long): Boolean {
+        val participant = leagueParticipantRepository.findById(participantId)
+            .orElseThrow { RuntimeException("참가자를 찾을 수 없습니다: $participantId") }
+        val previousDistance = participant.totalDistance
+        participant.updateDistance(distance)
+        return participant.totalDistance > previousDistance
+    }
+
     @Transactional(readOnly = true)
     fun getCurrentParticipant(userId: Long): LeagueParticipant? {
         return leagueParticipantRepository.findCurrentParticipantByUserId(userId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getParticipant(userId: Long, sessionId: Long): LeagueParticipant? {
+        return leagueParticipantRepository.findByUserIdAndSessionId(userId, sessionId)
     }
 
     @Transactional(readOnly = true)

@@ -3,6 +3,7 @@ package com.example.running.domain.league.repository
 import com.example.running.domain.league.entity.LeagueParticipant
 import com.example.running.domain.league.entity.QLeagueParticipant.Companion.leagueParticipant
 import com.example.running.domain.league.entity.QLeagueSession.Companion.leagueSession
+import com.example.running.domain.league.enums.LeagueSessionState
 import com.example.running.domain.user.entity.QUser.Companion.user
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
@@ -10,6 +11,8 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Repository
 interface LeagueParticipantRepository : JpaRepository<LeagueParticipant, Long>, QLeagueParticipantRepository {
@@ -25,6 +28,7 @@ interface LeagueParticipantRepository : JpaRepository<LeagueParticipant, Long>, 
 
 interface QLeagueParticipantRepository {
     fun findCurrentParticipantByUserId(userId: Long): LeagueParticipant?
+    fun findByUserIdAndSessionId(userId: Long, sessionId: Long): LeagueParticipant?
     fun findUncheckedResultByUserId(userId: Long): LeagueParticipant?
     fun findHistoryByUserId(userId: Long, cursor: Long?, size: Int): List<LeagueParticipant>
     fun findBotsToUpdateBySlot(seasonId: Long, slot: Int, today: LocalDate): List<LeagueParticipant>
@@ -36,14 +40,34 @@ class QLeagueParticipantRepositoryImpl(
 ) : QLeagueParticipantRepository {
 
     override fun findCurrentParticipantByUserId(userId: Long): LeagueParticipant? {
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+
         return queryFactory
             .selectFrom(leagueParticipant)
             .join(leagueParticipant.leagueSession, leagueSession).fetchJoin()
             .where(
                 leagueParticipant.user.id.eq(userId),
-                leagueSession.isActive.isTrue
+                leagueSession.state.eq(LeagueSessionState.ACTIVE),
+                leagueSession.startDatetime.loe(now),
+                leagueSession.endDatetime.goe(now)
             )
-            .fetchOne()
+            .orderBy(
+                leagueSession.startDatetime.desc(),
+                leagueSession.id.desc(),
+                leagueParticipant.id.desc()
+            )
+            .fetchFirst()
+    }
+
+    override fun findByUserIdAndSessionId(userId: Long, sessionId: Long): LeagueParticipant? {
+        return queryFactory
+            .selectFrom(leagueParticipant)
+            .where(
+                leagueParticipant.user.id.eq(userId),
+                leagueParticipant.leagueSession.id.eq(sessionId)
+            )
+            .orderBy(leagueParticipant.id.desc())
+            .fetchFirst()
     }
 
     /**

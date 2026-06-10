@@ -8,6 +8,7 @@ import com.example.running.domain.league.service.dto.CurrentLeagueDto
 import com.example.running.domain.league.service.dto.LeagueHistoryDto
 import com.example.running.domain.league.service.dto.LeagueProfileDto
 import com.example.running.domain.league.service.dto.LeagueResultDto
+import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.repository.UserRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
@@ -21,7 +22,8 @@ class LeagueService(
     private val leagueParticipantService: LeagueParticipantService,
     private val userLeagueInfoService: UserLeagueInfoService,
     private val leagueParticipantRepository: LeagueParticipantRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val runningRecordRepository: RunningRecordRepository
 ) {
 
     /**
@@ -87,6 +89,26 @@ class LeagueService(
         val participant = leagueParticipantService.addParticipant(session, user)
 
         return participant
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun raiseCurrentLeagueDistance(userId: Long): Boolean {
+        val user = userRepository.findById(userId)
+            .orElseThrow { RuntimeException("유저를 찾을 수 없습니다: $userId") }
+        val userLeagueInfo = userLeagueInfoService.getOrCreateUserLeagueInfo(user)
+        val tierType = LeagueTierType.fromId(userLeagueInfo.currentTier.id)
+        val session = leagueSessionService.getOrCreateActiveSeasonByTier(tierType)
+
+        val totalDistance = runningRecordRepository.sumIncludedDistanceByUserIdAndEndDatetimeBetween(
+            userId = userId,
+            start = session.startDatetime,
+            end = session.endDatetime
+        )
+        if (totalDistance <= 0) return false
+
+        val participant = leagueParticipantService.getParticipant(userId, session.id)
+            ?: leagueParticipantService.addParticipant(session, user)
+        return leagueParticipantService.updateTotalDistanceIfHigher(participant.id, totalDistance)
     }
 
     /**

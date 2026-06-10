@@ -45,6 +45,11 @@ interface QRunningRecordRepository {
     fun findAllDistanceByShoeId(shoeId: Long): List<Int>
     fun findOverlapCandidates(userId: Long, start: OffsetDateTime, end: OffsetDateTime): List<RunningRecord>
     fun markPointAwardedIfEligible(userId: Long, runningRecordId: Long): Boolean
+    fun sumIncludedDistanceByUserIdAndEndDatetimeBetween(
+        userId: Long,
+        start: OffsetDateTime,
+        end: OffsetDateTime
+    ): Long
 
 }
 
@@ -151,5 +156,25 @@ class QRunningRecordRepositoryImpl(
                 runningRecord.pointAwarded.isFalse
             )
             .execute() > 0
+    }
+
+    override fun sumIncludedDistanceByUserIdAndEndDatetimeBetween(
+        userId: Long,
+        start: OffsetDateTime,
+        end: OffsetDateTime
+    ): Long {
+        return queryFactory.select(runningRecord.distance.sum())
+            .from(runningRecord)
+            .where(
+                runningRecord.user.id.eq(userId),
+                runningRecord.isEnd.isTrue,
+                runningRecord.isStatisticIncluded.isTrue,
+                runningRecord.endDatetime.isNotNull,
+                runningRecord.endDatetime.gt(start),
+                runningRecord.endDatetime.loe(end)
+            )
+            .fetchOne()
+            ?.toLong()
+            ?: 0L
     }
 }

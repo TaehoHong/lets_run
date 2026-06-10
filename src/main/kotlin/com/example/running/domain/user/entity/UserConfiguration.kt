@@ -24,8 +24,7 @@ class UserConfiguration(
         healthImportEnabled?.let { this.healthImportEnabled = it }
     }
 
-    fun markHealthImportSynced(lastSyncedAt: OffsetDateTime) {
-        this.healthImportEnabled = true
+    fun markHealthImportLastSynced(lastSyncedAt: OffsetDateTime) {
         this.healthImportLastSyncedAt = lastSyncedAt
     }
 }

@@ -36,7 +36,7 @@ class SecurityConfig(
             .authorizeHttpRequests { authorizeHttpRequests ->
                 authorizeHttpRequests.requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/error").permitAll()
 
-                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "healthy-check", "active-type").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/healthy-check", "/active-type").permitAll()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
