@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
 import org.springframework.web.util.ContentCachingResponseWrapper
@@ -44,7 +45,7 @@ class ApiLoggingInterceptor: HandlerInterceptor {
             val responseBody = if (isInquiry(request)) {
                 "[hidden]"
             } else {
-                objectMapper.readTree(response.contentAsByteArray.toString(charset(request.characterEncoding))).toString()
+                responseBodyToLog(response)
             }
 
             log.info {
@@ -55,6 +56,25 @@ class ApiLoggingInterceptor: HandlerInterceptor {
                 """.trimIndent()
             }
         }
+    }
+
+    private fun responseBodyToLog(response: ContentCachingResponseWrapper): String {
+        val responseBody = response.contentAsByteArray.toString(charset(response.characterEncoding))
+
+        return if (isJsonContentType(response.contentType)) {
+            objectMapper.readTree(responseBody).toString()
+        } else {
+            responseBody
+        }
+    }
+
+    private fun isJsonContentType(contentType: String?): Boolean {
+        if (contentType == null) {
+            return false
+        }
+
+        val mediaType = MediaType.parseMediaType(contentType)
+        return mediaType.subtype == "json" || mediaType.subtype.endsWith("+json")
     }
 
     private fun isInquiry(request: HttpServletRequest): Boolean {
