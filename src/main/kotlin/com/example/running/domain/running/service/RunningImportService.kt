@@ -16,6 +16,7 @@ import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.service.UserConfigurationService
 import com.example.running.utils.convertToOffsetDateTime
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -36,9 +37,16 @@ class RunningImportService(
     @Transactional(rollbackFor = [Exception::class])
     fun importBatch(userId: Long, request: ImportRunningBatchRequest): ImportRunningBatchResponse {
         validateBatch(request)
+        logger.info(
+            "Health import batch received: recordCount={}, recordsWithItems={}, totalGpsPoints={}",
+            request.records.size,
+            request.records.count { it.items.isNotEmpty() },
+            request.records.sumOf { record -> record.items.sumOf { item -> item.gpsPoints.size } },
+        )
 
         val configuration = userConfigurationService.getOrCreateForUpdate(userId)
         if (!configuration.healthImportEnabled) {
+            logger.info("Health import batch skipped: disabled")
             return ImportRunningBatchResponse(
                 createdCount = 0,
                 updatedCount = 0,
@@ -63,6 +71,15 @@ class RunningImportService(
         } else {
             false
         }
+
+        logger.info(
+            "Health import batch completed: recordCount={}, createdCount={}, updatedCount={}, duplicateCount={}, leagueDistanceChanged={}",
+            request.records.size,
+            results.count { it.status == ImportRunningRecordStatus.CREATED },
+            results.count { it.status == ImportRunningRecordStatus.UPDATED },
+            results.count { it.status == ImportRunningRecordStatus.DUPLICATE },
+            leagueDistanceChanged,
+        )
 
         return ImportRunningBatchResponse(
             createdCount = results.count { it.status == ImportRunningRecordStatus.CREATED },
@@ -89,7 +106,11 @@ class RunningImportService(
 
         if (sameExternalRecord != null) {
             sameExternalRecord.updateImported(request, startDatetime, endDatetime)
-            replaceItems(sameExternalRecord.id, request)
+            if (request.items.isNotEmpty()) {
+                replaceItems(sameExternalRecord.id, request)
+            } else {
+                logger.info("Health import update preserved existing items: incomingItemsEmpty=true")
+            }
             return ImportResult(
                 status = ImportRunningRecordStatus.UPDATED,
                 awardedPoint = 0,
@@ -296,6 +317,7 @@ class RunningImportService(
         private const val SAME_RUN_TIME_DIFF_SECONDS = 300
         private const val SAME_RUN_OVERLAP_RATIO = 0.8
         private const val SAME_RUN_DISTANCE_DIFF_RATIO = 0.2
+        private val logger = LoggerFactory.getLogger(RunningImportService::class.java)
     }
 
     private data class ImportResult(
