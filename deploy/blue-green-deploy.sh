@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="/home/taeho/app"
+APP_DIR="/home/ubuntu/app"
 NGINX_CONF="/etc/nginx/sites-available/dev-runtaeho"
 
 BLUE_PORT="12642"
