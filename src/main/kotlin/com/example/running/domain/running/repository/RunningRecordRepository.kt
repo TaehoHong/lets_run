@@ -163,7 +163,7 @@ class QRunningRecordRepositoryImpl(
         start: OffsetDateTime,
         end: OffsetDateTime
     ): Long {
-        return queryFactory.select(runningRecord.distance.sum())
+        return queryFactory.select(runningRecord.distance.sumLong())
             .from(runningRecord)
             .where(
                 runningRecord.user.id.eq(userId),
@@ -173,8 +173,6 @@ class QRunningRecordRepositoryImpl(
                 runningRecord.endDatetime.gt(start),
                 runningRecord.endDatetime.loe(end)
             )
-            .fetchOne()
-            ?.toLong()
-            ?: 0L
+            .fetchOne() ?: 0L
     }
 }
