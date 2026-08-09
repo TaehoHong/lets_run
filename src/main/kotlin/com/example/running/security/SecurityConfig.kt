@@ -69,12 +69,14 @@ class SecurityConfig(
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/import-batch").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PUT, "/api/v1/running/*").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/running/*/shoe").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/*/end").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/statistics").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/*/items").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/*/items").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/running/*").authenticated()
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/points/histories").authenticated()
 

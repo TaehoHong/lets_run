@@ -72,6 +72,15 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
             .orElseThrow { ApiException(ApiError.NOT_FOUND_SHOE) }
     }
 
+    @Transactional(readOnly = true)
+    fun getActiveShoe(userId: Long, id: Long): Shoe {
+        return getById(id).also {
+            if (it.user.id != userId || !it.isEnabled || it.isDeleted) {
+                throw ApiException(ApiError.NOT_AUTHORIZED)
+            }
+        }
+    }
+
     fun findMainShoe(userId: Long): ShoeDto? {
         return shoeRepository.findShoeByUserIdAndIsMain(userId, true)
             ?.let { ShoeDto(it) }

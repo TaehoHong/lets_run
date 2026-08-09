@@ -41,7 +41,7 @@ class RunningRecordItemService(
 
     @Transactional(readOnly = true)
     fun getItems(userId: Long, runningRecordId: Long): List<RunningRecordItemDto> {
-        verifyOwnership(userId, runningRecordId)
+        verifyReadableRecord(userId, runningRecordId)
 
         return runningRecordItemRepository
             .findAllByRunningRecord_IdOrderByOrderIndexAsc(runningRecordId)
@@ -63,6 +63,12 @@ class RunningRecordItemService(
 
     private fun verifyOwnership(userId: Long, runningRecordId: Long) {
         if (!runningRecordRepository.existsByIdAndUserId(runningRecordId, userId)) {
+            throw ApiException(ApiError.NOT_AUTHORIZED)
+        }
+    }
+
+    private fun verifyReadableRecord(userId: Long, runningRecordId: Long) {
+        if (!runningRecordRepository.existsByIdAndUserIdAndIsEndTrueAndIsStatisticIncludedTrue(runningRecordId, userId)) {
             throw ApiException(ApiError.NOT_AUTHORIZED)
         }
     }

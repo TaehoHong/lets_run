@@ -38,6 +38,25 @@ class RunningRecordController(
         }
     }
 
+    @GetMapping("/{id}")
+    fun getDetail(@PathVariable id: Long): RunningRecordDetailResponse {
+        return authenticateWithUser { userId ->
+            runningRecordService.getDto(userId, id)
+                .let { RunningRecordDetailResponse(it) }
+        }
+    }
+
+    @PatchMapping("/{id}/shoe")
+    fun updateShoe(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateRunningRecordShoeRequest
+    ): RunningRecordDetailResponse {
+        return authenticateWithUser { userId ->
+            runningRecordService.updateShoe(userId, id, request.shoeId)
+                .let { RunningRecordDetailResponse(it) }
+        }
+    }
+
     @PostMapping("/{id}/end")
     fun end(@PathVariable id: Long, @RequestBody request: EndRunningRequest): EndRunningResponse {
         return runningEndService.end(

@@ -18,6 +18,8 @@ interface RunningRecordRepository : JpaRepository<RunningRecord, Long>, QRunning
 
     fun findByIdAndUserId(id: Long, userId: Long): RunningRecord?
     fun existsByIdAndUserId(id: Long, userId: Long): Boolean
+    fun findByIdAndUserIdAndIsEndTrueAndIsStatisticIncludedTrue(id: Long, userId: Long): RunningRecord?
+    fun existsByIdAndUserIdAndIsEndTrueAndIsStatisticIncludedTrue(id: Long, userId: Long): Boolean
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     fun findByUserIdAndSourceAndExternalId(

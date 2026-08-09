@@ -1,6 +1,8 @@
 package com.example.running.domain.running.controller.dto
 
+import com.example.running.domain.running.service.dto.RunningRecordDetailDto
 import com.example.running.domain.running.service.dto.RunningRecordDto
+import com.example.running.domain.shoe.controller.dto.ShoeResponse
 import com.example.running.utils.convertToOffsetDateTime
 import java.time.OffsetDateTime
 
@@ -44,3 +46,33 @@ class RunningRecordSearchResponse(
         startTimestamp = runningRecordDto.startDatetime.toEpochSecond(),
     )
 }
+
+class RunningRecordDetailResponse(
+    val id: Long,
+    val distance: Int,
+    val durationSec: Long,
+    val cadence: Short,
+    val heartRate: Short,
+    val calorie: Int,
+    val isUserInput: Boolean,
+    val startTimestamp: Long,
+    val shoeId: Long?,
+    val connectedShoe: ShoeResponse?,
+) {
+    constructor(runningRecordDetailDto: RunningRecordDetailDto) : this(
+        id = runningRecordDetailDto.id,
+        distance = runningRecordDetailDto.distance,
+        durationSec = runningRecordDetailDto.durationSec,
+        cadence = runningRecordDetailDto.cadence,
+        heartRate = runningRecordDetailDto.heartRate,
+        calorie = runningRecordDetailDto.calorie,
+        isUserInput = runningRecordDetailDto.isUserInput,
+        startTimestamp = runningRecordDetailDto.startDatetime.toEpochSecond(),
+        shoeId = runningRecordDetailDto.shoeId,
+        connectedShoe = runningRecordDetailDto.connectedShoe?.let { ShoeResponse(it) },
+    )
+}
+
+class UpdateRunningRecordShoeRequest(
+    val shoeId: Long
+)

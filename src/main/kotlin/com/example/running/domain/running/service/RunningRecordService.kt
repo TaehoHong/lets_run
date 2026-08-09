@@ -4,9 +4,12 @@ import com.example.running.domain.common.dto.CursorResult
 import com.example.running.domain.running.controller.dto.RunningRecordSearchRequest
 import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.repository.RunningRecordRepository
+import com.example.running.domain.running.service.dto.RunningRecordDetailDto
 import com.example.running.domain.running.service.dto.RunningRecordDto
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.domain.shoe.service.ShoeService
+import com.example.running.exception.ApiError
+import com.example.running.exception.ApiException
 import com.example.running.utils.alsoIf
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -38,6 +41,27 @@ class RunningRecordService(
         return CursorResult(runningRecordDtos, cursor, hasNext)
     }
 
+    @Transactional(readOnly = true)
+    fun getDto(userId: Long, runningRecordId: Long): RunningRecordDetailDto {
+        return getEndedStatisticRecordByIdAndUserId(runningRecordId, userId)
+            .let { RunningRecordDetailDto(it) }
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateShoe(userId: Long, runningRecordId: Long, shoeId: Long): RunningRecordDetailDto {
+        val runningRecord = getEndedStatisticRecordByIdAndUserId(runningRecordId, userId)
+        val shoe = shoeService.getActiveShoe(userId, shoeId)
+        val previousShoeId = runningRecord.shoe?.id
+
+        if (previousShoeId != shoe.id) {
+            runningRecord.shoe = shoe
+
+            previousShoeId?.let { updateShoeTotalDistance(it) }
+            shoe.totalDistance = updateShoeTotalDistance(shoe.id)
+        }
+
+        return RunningRecordDetailDto(runningRecord)
+    }
 
     @Transactional(rollbackFor = [Exception::class])
     fun updateRecord(updateDto: RunningRecordUpdateDto): RunningRecord {
@@ -64,8 +88,19 @@ class RunningRecordService(
             ?: run { throw RuntimeException("존재하지 않는 러닝 기록입니다.") }
     }
 
+    private fun getEndedStatisticRecordByIdAndUserId(id: Long, userId: Long): RunningRecord {
+        return runningRecordRepository.findByIdAndUserIdAndIsEndTrueAndIsStatisticIncludedTrue(id, userId)
+            ?: throw ApiException(ApiError.NOT_AUTHORIZED)
+    }
+
     private fun getTotalDistanceByShoeId(shoeId: Long): Int {
         return runningRecordRepository.findAllDistanceByShoeId(shoeId).sum()
+    }
+
+    private fun updateShoeTotalDistance(shoeId: Long): Int {
+        val totalDistance = getTotalDistanceByShoeId(shoeId)
+        shoeService.updateTotalDistance(shoeId, totalDistance)
+        return totalDistance
     }
 
 }
