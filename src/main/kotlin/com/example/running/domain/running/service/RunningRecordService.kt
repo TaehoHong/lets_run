@@ -10,7 +10,6 @@ import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.exception.ApiError
 import com.example.running.exception.ApiException
-import com.example.running.utils.alsoIf
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -77,9 +76,8 @@ class RunningRecordService(
                     updateDto.startDatetime,
                     updateDto.endDatetime
                 )
-            }.alsoIf({ updateDto.shoeId != null }) {
-                val totalDistance = getTotalDistanceByShoeId(updateDto.shoeId!!)
-                shoeService.updateTotalDistance(updateDto.shoeId, totalDistance)
+            }.also { runningRecord ->
+                runningRecord.shoe?.id?.let { updateShoeTotalDistance(it) }
             }
     }
 
