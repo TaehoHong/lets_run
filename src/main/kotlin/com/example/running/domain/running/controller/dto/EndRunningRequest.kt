@@ -5,5 +5,6 @@ class EndRunningRequest(
     val durationSec: Long,
     val cadence: Short,
     val heartRate: Short,
-    val calorie: Int
+    val calorie: Int,
+    val endTimestamp: Long? = null
 )

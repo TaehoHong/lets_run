@@ -67,7 +67,8 @@ class RunningRecordController(
                 durationSec = request.durationSec,
                 cadence = request.cadence,
                 heartRate = request.heartRate,
-                calorie = request.calorie
+                calorie = request.calorie,
+                endDatetime = request.endTimestamp?.let { convertToOffsetDateTime(it) }
             )
         ).let {
             EndRunningResponse(it)

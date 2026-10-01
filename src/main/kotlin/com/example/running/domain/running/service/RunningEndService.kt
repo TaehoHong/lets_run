@@ -1,5 +1,6 @@
 package com.example.running.domain.running.service
 
+import com.example.running.domain.league.service.LeagueService
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
@@ -17,6 +18,7 @@ class RunningEndService(
     private val runningRecordService: RunningRecordService,
     private val userPointService: UserPointService,
     private val runningRecordRepository: RunningRecordRepository,
+    private val leagueService: LeagueService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -50,6 +52,9 @@ class RunningEndService(
 
         // 총 획득 포인트 (기본 + 보너스)
         val userPoint = userPointService.getOrCreateByUserId(updateRunningDto.userId)
+
+        // 업로드 시각이 아닌 저장된 러닝 종료 시각으로 현재 시즌 거리를 재집계한다.
+        leagueService.raiseCurrentLeagueDistance(updateRunningDto.userId)
 
         return EndRunningDto(runningRecord, userPoint.point)
     }
