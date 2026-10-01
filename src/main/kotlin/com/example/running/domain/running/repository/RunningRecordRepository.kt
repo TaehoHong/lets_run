@@ -172,7 +172,7 @@ class QRunningRecordRepositoryImpl(
                 runningRecord.isEnd.isTrue,
                 runningRecord.isStatisticIncluded.isTrue,
                 runningRecord.endDatetime.isNotNull,
-                runningRecord.endDatetime.gt(start),
+                runningRecord.endDatetime.goe(start),
                 runningRecord.endDatetime.loe(end)
             )
             .fetchOne() ?: 0L
