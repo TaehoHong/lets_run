@@ -13,7 +13,7 @@ class UserConfigurationService(
     @Transactional
     fun getOrCreate(userId: Long): UserConfiguration {
         return userConfigurationRepository.findById(userId)
-            .orElseGet { userConfigurationRepository.save(UserConfiguration(userId = userId)) }
+            .orElseGet { getOrCreateForUpdate(userId) }
     }
 
     @Transactional
@@ -24,9 +24,9 @@ class UserConfigurationService(
     }
 
     @Transactional
-    fun update(userId: Long, healthImportEnabled: Boolean?): UserConfiguration {
-        return getOrCreate(userId).apply {
-            update(healthImportEnabled = healthImportEnabled)
+    fun update(userId: Long, healthImportEnabled: Boolean?, language: String? = null): UserConfiguration {
+        return getOrCreateForUpdate(userId).apply {
+            update(healthImportEnabled = healthImportEnabled, language = language)
         }
     }
 }

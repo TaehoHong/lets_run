@@ -19,9 +19,13 @@ class UserConfiguration(
 
     @Column(name = "health_import_last_synced_at", columnDefinition = "DATETIME")
     var healthImportLastSyncedAt: OffsetDateTime? = null,
+
+    @Column(name = "language", nullable = false, length = 10)
+    var language: String = "system",
 ) {
-    fun update(healthImportEnabled: Boolean?) {
+    fun update(healthImportEnabled: Boolean?, language: String? = null) {
         healthImportEnabled?.let { this.healthImportEnabled = it }
+        language?.let { this.language = it }
     }
 
     fun markHealthImportLastSynced(lastSyncedAt: OffsetDateTime) {

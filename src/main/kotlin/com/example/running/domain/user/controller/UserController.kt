@@ -57,12 +57,13 @@ class UserController(
     }
 
     @PatchMapping("/configuration")
-    fun updateConfiguration(@RequestBody request: UpdateUserConfigurationRequest): UserConfigurationResponse {
+    fun updateConfiguration(@Valid @RequestBody request: UpdateUserConfigurationRequest): UserConfigurationResponse {
         return authenticateWithUser { userId ->
             UserConfigurationResponse(
                 userConfigurationService.update(
                     userId = userId,
-                    healthImportEnabled = request.healthImportEnabled
+                    healthImportEnabled = request.healthImportEnabled,
+                    language = request.language
                 )
             )
         }
