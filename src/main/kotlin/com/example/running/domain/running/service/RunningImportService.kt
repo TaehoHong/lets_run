@@ -303,9 +303,6 @@ class RunningImportService(
                 require(item.distance >= 0) { "러닝 구간 거리는 0 이상이어야 합니다." }
                 require(item.durationSec >= 0) { "러닝 구간 시간은 0 이상이어야 합니다." }
                 require(item.startTimestamp < item.endTimestamp) { "러닝 구간 종료 시각은 시작 시각보다 늦어야 합니다." }
-                require(item.gpsPoints.size <= MAX_GPS_POINT_COUNT_PER_ITEM) {
-                    "GPS 포인트는 구간당 최대 ${MAX_GPS_POINT_COUNT_PER_ITEM}개입니다."
-                }
             }
         }
     }
@@ -313,7 +310,6 @@ class RunningImportService(
     companion object {
         private const val MAX_BATCH_SIZE = 100
         private const val MAX_ITEM_COUNT_PER_RECORD = 1
-        private const val MAX_GPS_POINT_COUNT_PER_ITEM = 5000
         private const val SAME_RUN_TIME_DIFF_SECONDS = 300
         private const val SAME_RUN_OVERLAP_RATIO = 0.8
         private const val SAME_RUN_DISTANCE_DIFF_RATIO = 0.2

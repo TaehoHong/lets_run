@@ -20,6 +20,16 @@ object RunningRecordItemGpsCodec {
         }
     }
 
+    fun matches(raw: String?, points: List<RunningRecordItemGpsPointDto>): Boolean {
+        if (raw == null) return points.isEmpty()
+        return try {
+            objectMapper.readValue(raw, gpsPointsTypeRef) == points
+        } catch (ex: Exception) {
+            // Corrupt stored JSON must never be treated as a valid empty route.
+            false
+        }
+    }
+
     fun decode(raw: String?): List<RunningRecordItemGpsPointDto> {
         if (raw.isNullOrBlank()) return emptyList()
         return try {

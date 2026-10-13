@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.ZoneId
 
 @Service
 class RunningStatisticService(
@@ -17,7 +18,8 @@ class RunningStatisticService(
         userId: Long,
         startDateTime: LocalDateTime,
         endDateTime: LocalDateTime,
-        statisticType: RunningStatisticType
+        statisticType: RunningStatisticType,
+        timeZone: ZoneId = ZoneOffset.UTC
     ): RunningStatistics {
 
         return RunningStatistics(
@@ -26,7 +28,8 @@ class RunningStatisticService(
                 OffsetDateTime.of(startDateTime, ZoneOffset.UTC),
                 OffsetDateTime.of(endDateTime, ZoneOffset.UTC),
             ),
-            statisticType
+            statisticType,
+            timeZone
         )
     }
 

@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.DateTimeException
+import com.example.running.exception.ApiError
+import com.example.running.exception.ApiException
 
 @RequestMapping("/api/v1/running/statistics")
 @RestController
@@ -20,11 +24,17 @@ class RunningStatisticController(
     fun getStatistics(
         @RequestParam startDateTime: LocalDateTime,
         @RequestParam endDateTime: LocalDateTime,
-        @RequestParam statisticType: RunningStatisticType
+        @RequestParam statisticType: RunningStatisticType,
+        @RequestParam(defaultValue = "UTC") timeZone: String
     ): RunningStatistics {
 
+        val zone = try {
+            ZoneId.of(timeZone)
+        } catch (_: DateTimeException) {
+            throw ApiException(ApiError.BAD_REQUEST_FIELD_VALID_ERROR)
+        }
         return authenticateWithUser { userId ->
-            runningStatisticService.getStatistics(userId, startDateTime, endDateTime, statisticType)
+            runningStatisticService.getStatistics(userId, startDateTime, endDateTime, statisticType, zone)
         }
     }
 }

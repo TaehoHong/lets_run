@@ -9,6 +9,7 @@ import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.impl.JPAQueryFactory
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
@@ -17,6 +18,10 @@ import java.time.OffsetDateTime
 interface RunningRecordRepository : JpaRepository<RunningRecord, Long>, QRunningRecordRepository {
 
     fun findByIdAndUserId(id: Long, userId: Long): RunningRecord?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select record from RunningRecord record where record.id = :id and record.user.id = :userId")
+    fun findOwnedForUpdate(id: Long, userId: Long): RunningRecord?
     fun existsByIdAndUserId(id: Long, userId: Long): Boolean
     fun findByIdAndUserIdAndIsEndTrueAndIsStatisticIncludedTrue(id: Long, userId: Long): RunningRecord?
     fun existsByIdAndUserIdAndIsEndTrueAndIsStatisticIncludedTrue(id: Long, userId: Long): Boolean

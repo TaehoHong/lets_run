@@ -29,7 +29,9 @@ class UserPointHistoryService(
     @Transactional(readOnly = true)
     fun search(userId: Long, isEarned: Boolean?, cursor: Long?,size: Int, startCreatedDatetime: OffsetDateTime?): CursorResult<UserPointHistory> {
         val content = userPointHistoryRepository.findAll(userId, cursor, isEarned, startCreatedDatetime, size)
-        val hasNext = userPointHistoryRepository.existsBy(userId, cursor, isEarned, startCreatedDatetime)
+        val hasNext = content.lastOrNull()?.id?.let {
+            userPointHistoryRepository.existsBy(userId, it, isEarned, startCreatedDatetime)
+        } ?: false
         return CursorResult(content, content.lastOrNull()?.id, hasNext)
     }
 }

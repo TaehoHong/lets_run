@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 interface ShoeRepository: JpaRepository<Shoe, Long>, QShoeRepository {
-    fun findShoeByUserIdAndIsMain(userId: Long, main: Boolean): Shoe?
+    fun findShoeByUserIdAndIsMainAndIsEnabledAndIsDeleted(userId: Long, main: Boolean, enabled: Boolean, deleted: Boolean): Shoe?
 }
 
 

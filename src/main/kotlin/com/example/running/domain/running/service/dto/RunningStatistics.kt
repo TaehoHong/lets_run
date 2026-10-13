@@ -4,9 +4,12 @@ import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.enums.RunningStatisticType
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 class RunningStatistics(
-    runningRecords: List<RunningRecord>, statisticType: RunningStatisticType
+    runningRecords: List<RunningRecord>, statisticType: RunningStatisticType,
+    private val timeZone: ZoneId = ZoneOffset.UTC
 ) {
     val statisticType: RunningStatisticType
     val chartData: List<RunningChartDto>
@@ -23,7 +26,7 @@ class RunningStatistics(
         this.averageDistance = if (runningRecords.isNotEmpty()) {
             (this.totalDistance / runningRecords.size).toInt()
         } else 0
-        this.averagePaceSec = (this.totalDurationSec.toDouble() / this.totalDistance.toDouble())
+        this.averagePaceSec = if (this.totalDistance > 0) this.totalDurationSec.toDouble() / this.totalDistance else 0.0
         this.runningCount = runningRecords.size
         this.chartData = makeChartData(runningRecords)
     }
@@ -40,8 +43,8 @@ class RunningStatistics(
     fun groupKeyByStatisticType(dateTime: OffsetDateTime): LocalDate {
 
         return when (this.statisticType) {
-            RunningStatisticType.WEEKLY, RunningStatisticType.MONTHLY -> dateTime.toLocalDate()
-            RunningStatisticType.YEARLY -> dateTime.toLocalDate().withDayOfMonth(1)
+            RunningStatisticType.WEEKLY, RunningStatisticType.MONTHLY -> dateTime.atZoneSameInstant(timeZone).toLocalDate()
+            RunningStatisticType.YEARLY -> dateTime.atZoneSameInstant(timeZone).toLocalDate().withDayOfMonth(1)
         }
     }
 }
@@ -55,7 +58,7 @@ data class RunningChartDto(
     fun addData(distance: Int, durationSec: Long): RunningChartDto {
         this.distance += distance
         this.durationSec += durationSec
-        this.paceSec = this.durationSec.toDouble() / (distance / 1000.0)
+        this.paceSec = if (this.distance > 0) this.durationSec.toDouble() / this.distance else 0.0
         return this
     }
 }

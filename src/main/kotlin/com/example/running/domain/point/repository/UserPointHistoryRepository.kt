@@ -49,7 +49,7 @@ class QUserPointHistoryRepositoryImpl(
         return BooleanBuilder(userPointHistory.userId.eq(userId))
             .also {
                 if(cursor != null) {
-                    it.and(userPointHistory.id.lt(userId))
+                    it.and(userPointHistory.id.lt(cursor))
                 }
 
                 if(isEarned != null) {

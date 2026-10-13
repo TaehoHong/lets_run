@@ -41,6 +41,13 @@ class RunningRecordService(
     }
 
     @Transactional(readOnly = true)
+    fun verifyOwnership(userId: Long, runningRecordId: Long) {
+        if (!runningRecordRepository.existsByIdAndUserId(runningRecordId, userId)) {
+            throw ApiException(ApiError.NOT_AUTHORIZED)
+        }
+    }
+
+    @Transactional(readOnly = true)
     fun getDto(userId: Long, runningRecordId: Long): RunningRecordDetailDto {
         return getEndedStatisticRecordByIdAndUserId(runningRecordId, userId)
             .let { RunningRecordDetailDto(it) }

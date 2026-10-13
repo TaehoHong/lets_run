@@ -56,6 +56,9 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
                 isEnabled = shoePatchDto.isEnabled,
                 isDeleted = shoePatchDto.isDeleted
             )
+            if (!it.isEnabled || it.isDeleted) {
+                it.isMain = false
+            }
         }.let {
             shoeRepository.save(it)
         }.let { ShoeDto(it) }
@@ -63,6 +66,7 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
 
     @Transactional(rollbackFor = [Exception::class])
     fun updateToMain(userId: Long, id: Long) {
+        getActiveShoe(userId, id)
         shoeRepository.updateIsMainByUserId(userId, false)
         shoeRepository.updateIsMainByIdAndUserId(id, userId, true)
     }
@@ -82,7 +86,7 @@ class ShoeService(private val shoeRepository: ShoeRepository) {
     }
 
     fun findMainShoe(userId: Long): ShoeDto? {
-        return shoeRepository.findShoeByUserIdAndIsMain(userId, true)
+        return shoeRepository.findShoeByUserIdAndIsMainAndIsEnabledAndIsDeleted(userId, true, true, false)
             ?.let { ShoeDto(it) }
     }
 

@@ -3,6 +3,8 @@ package com.example.running.domain.running.service
 import com.example.running.domain.running.service.dto.RunningRecordItemGpsPointDto
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class RunningRecordItemGpsCodecTest {
@@ -44,5 +46,11 @@ class RunningRecordItemGpsCodecTest {
     fun `decode invalid json returns empty list`() {
         val decoded = RunningRecordItemGpsCodec.decode("{invalid json")
         assertEquals(emptyList<RunningRecordItemGpsPointDto>(), decoded)
+    }
+    @Test
+    fun `corrupt JSON is not an empty route retry`() {
+        assertFalse(RunningRecordItemGpsCodec.matches("{invalid", emptyList()))
+        assertTrue(RunningRecordItemGpsCodec.matches(null, emptyList()))
+        assertTrue(RunningRecordItemGpsCodec.matches("[]", emptyList()))
     }
 }

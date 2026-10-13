@@ -38,6 +38,12 @@ class RunningRecordController(
         }
     }
 
+    @GetMapping("/{id}/ownership")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    fun verifyOwnership(@PathVariable id: Long) {
+        authenticateWithUser { userId -> runningRecordService.verifyOwnership(userId, id) }
+    }
+
     @GetMapping("/{id}")
     fun getDetail(@PathVariable id: Long): RunningRecordDetailResponse {
         return authenticateWithUser { userId ->
