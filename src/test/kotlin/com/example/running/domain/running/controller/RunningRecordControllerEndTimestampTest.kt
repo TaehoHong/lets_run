@@ -7,6 +7,7 @@ import com.example.running.domain.league.entity.UserLeagueInfo
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.repository.LeagueParticipantRepository
 import com.example.running.domain.league.service.LeagueParticipantService
+import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.league.service.LeagueService
 import com.example.running.domain.league.service.LeagueSessionService
 import com.example.running.domain.league.service.UserLeagueInfoService
@@ -66,7 +67,7 @@ class RunningRecordControllerEndTimestampTest {
     )
     private val controller = RunningRecordController(
         mock(RunningStartService::class.java),
-        RunningEndService(recordService, pointService, repository, leagueService),
+        RunningEndService(recordService, pointService, repository, leagueService, mock(NotificationService::class.java)),
         recordService
     )
     private val mapper = jacksonObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
@@ -115,6 +116,13 @@ class RunningRecordControllerEndTimestampTest {
 
         assertEquals(OffsetDateTime.parse("2025-01-05T15:30:00Z"), record.endDatetime)
         assertEquals(7000L, participant.totalDistance)
+    }
+
+    @Test
+    fun `legacy retry without timestamp does not move the reminder anchor`() {
+        endRecord(request + ("endTimestamp" to 1736091000L))
+        endRecord(request)
+        assertEquals(OffsetDateTime.parse("2025-01-05T15:30:00Z"), record.endDatetime)
     }
 
     @Test

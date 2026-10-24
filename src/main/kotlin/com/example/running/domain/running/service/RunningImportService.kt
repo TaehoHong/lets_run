@@ -1,6 +1,7 @@
 package com.example.running.domain.running.service
 
 import com.example.running.domain.league.service.LeagueService
+import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
@@ -32,6 +33,7 @@ class RunningImportService(
     private val userPointService: UserPointService,
     private val userConfigurationService: UserConfigurationService,
     private val leagueService: LeagueService,
+    private val notificationService: NotificationService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -64,6 +66,10 @@ class RunningImportService(
         val results = request.records.map { recordRequest ->
             importOne(userId, recordRequest, previousLastSyncedAt)
         }
+        results.mapNotNull { it.leagueSyncTarget }
+            .filter { it.isEnd && it.isStatisticIncluded }
+            .mapNotNull { it.endDatetime }
+            .maxOrNull()?.let { notificationService.recordCompletion(userId, it.toInstant()) }
         resolveNextLastSyncedAt(userId, previousLastSyncedAt, requestMaxEndDatetime)
             ?.let { configuration.markHealthImportLastSynced(it) }
         val leagueDistanceChanged = if (results.any { it.leagueSyncTarget != null }) {

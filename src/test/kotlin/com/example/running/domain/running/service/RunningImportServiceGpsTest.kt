@@ -1,5 +1,6 @@
 package com.example.running.domain.running.service
 
+import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.league.service.LeagueService
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.running.controller.dto.ImportRunningBatchRequest
@@ -29,7 +30,7 @@ class RunningImportServiceGpsTest {
         val items = mock(RunningRecordItemRepository::class.java)
         val configuration = mock(UserConfigurationService::class.java)
         val league = mock(LeagueService::class.java)
-        val service = RunningImportService(records, items, mock(UserPointService::class.java), configuration, league)
+        val service = RunningImportService(records, items, mock(UserPointService::class.java), configuration, league, mock(NotificationService::class.java))
         val existing = RunningRecord(id = 10, user = User(id = 1), source = RunningRecordSource.HEALTH)
         `when`(configuration.getOrCreateForUpdate(1)).thenReturn(UserConfiguration(1, true))
         `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.HEALTH, "workout")).thenReturn(existing)

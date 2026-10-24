@@ -93,12 +93,17 @@ class SecurityConfig(
                 // Inquiry
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/inquiries").authenticated()
 
+                authorizeHttpRequests.requestMatchers("/api/v1/notifications", "/api/v1/notifications/**").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/admin/notices", "/api/v1/admin/notices/*/publish").hasRole("ADMIN")
+
                 // League
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/current").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/profile").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/league/join").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/result").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/league/result/confirm").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/results/*").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/league/results/*/confirm").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/league/history").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/league-participants/*/distance").authenticated()
 

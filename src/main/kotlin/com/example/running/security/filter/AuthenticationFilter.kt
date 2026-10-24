@@ -40,7 +40,7 @@ class AuthenticationFilter(
 
         if (accessToken != null) {
             log.debug { "AccessToken found for: $requestMethod $requestUri" }
-            verifyToken(accessToken, response)
+            if (!verifyToken(accessToken, response)) return
 
             val token = accessToken.replace(JwtProperties.TOKEN_PREFIX,"")
 
@@ -48,9 +48,9 @@ class AuthenticationFilter(
             if(authentication == null) {
                 val auth = getAuthentication(token)
                 SecurityContextHolder.getContext().authentication = auth
-                log.debug { "Authentication set - Principal: ${auth.principal}, Authorities: ${auth.authorities}" }
+                log.debug { "Authentication set" }
             } else {
-                log.debug { "Authentication already exists: ${authentication.principal}" }
+                log.debug { "Authentication already exists" }
             }
         } else {
             log.debug { "No AccessToken for: $requestMethod $requestUri" }
@@ -75,11 +75,11 @@ class AuthenticationFilter(
         runCatching {
             tokenService.verify(token)
         }.onFailure { exception ->
-            log.error(exception) { "Token verification failed: ${exception.message}" }
+            log.warn { "Token verification failed (${exception.javaClass.simpleName})" }
 
             val errorResponse = when (exception) {
                 is TokenException -> ErrorResponse(message = exception.message)
-                else -> ErrorResponse(message = "Unknown error with verify Token: ${exception.message}")
+                else -> ErrorResponse(message = "Invalid authentication token")
             }
 
             response.status = HttpServletResponse.SC_UNAUTHORIZED

@@ -3,6 +3,7 @@ package com.example.running.domain.user.service
 import com.example.running.domain.auth.service.AppleTokenRevokeService
 import com.example.running.domain.auth.service.OAuthTokenService
 import com.example.running.domain.auth.service.dto.UserCreationDto
+import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.user.dto.UserDataDto
@@ -21,7 +22,8 @@ class UserService(
     private val userAccountService: UserAccountService,
     private val userRepository: UserRepository,
     private val oAuthTokenService: OAuthTokenService,
-    private val appleTokenRevokeService: AppleTokenRevokeService
+    private val appleTokenRevokeService: AppleTokenRevokeService,
+    private val notificationService: NotificationService,
 ) {
     private val log = KotlinLogging.logger {}
 
@@ -82,6 +84,7 @@ class UserService(
 
         // 사용자 익명화
         user.withdraw()
+        notificationService.detachAllDevices(userId)
 
         // OAuth 토큰 삭제
         oAuthTokenService.deleteAllByUserId(userId)

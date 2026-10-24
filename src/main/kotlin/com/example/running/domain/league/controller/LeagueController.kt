@@ -64,6 +64,16 @@ class LeagueController(
         }
     }
 
+    @GetMapping("/results/{participantId}")
+    fun getResult(@PathVariable participantId: Long): LeagueResultResponse = authenticateWithUser {
+        LeagueResultResponse.from(leagueService.getResult(it, participantId))
+    }
+
+    @PostMapping("/results/{participantId}/confirm")
+    fun confirmResultById(@PathVariable participantId: Long) = authenticateWithUser {
+        leagueService.confirmResultById(it, participantId)
+    }
+
     /**
      * 리그 히스토리 조회
      */

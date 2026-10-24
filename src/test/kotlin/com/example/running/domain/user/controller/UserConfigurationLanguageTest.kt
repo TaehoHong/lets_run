@@ -1,5 +1,6 @@
 package com.example.running.domain.user.controller
 
+import com.example.running.domain.notification.repository.NotificationRepository
 import com.example.running.common.service.S3Service
 import com.example.running.domain.user.entity.UserConfiguration
 import com.example.running.domain.user.repository.UserConfigurationRepository
@@ -20,13 +21,16 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.util.Optional
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class UserConfigurationLanguageTest {
     private val repository = mock(UserConfigurationRepository::class.java)
+    private val languages = mock(NotificationRepository::class.java)
     private val configuration = UserConfiguration(userId = 7, healthImportEnabled = true)
     private val controller = UserController(
         mock(UserAccountService::class.java), mock(UserService::class.java),
-        UserConfigurationService(repository), mock(S3Service::class.java)
+        UserConfigurationService(repository, languages), mock(S3Service::class.java)
     )
     private val mvc = MockMvcBuilders.standaloneSetup(controller)
         .setControllerAdvice(ControllerAdvice()).build()
@@ -36,6 +40,8 @@ class UserConfigurationLanguageTest {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken("test-user", null).apply { details = AuthenticationVo(7) }
         `when`(repository.findByUserIdForUpdate(7)).thenReturn(configuration)
+        `when`(languages.languageId("ko")).thenReturn(1)
+        `when`(languages.languageId("ja")).thenReturn(2)
     }
 
     @AfterEach
@@ -47,6 +53,7 @@ class UserConfigurationLanguageTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.language").value("ja"))
             .andExpect(jsonPath("$.healthImportEnabled").value(true))
+        assertEquals(2, configuration.languageId)
         update("""{"healthImportEnabled":false}""")
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.language").value("ja"))
@@ -58,6 +65,14 @@ class UserConfigurationLanguageTest {
         update("{}")
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.language").value("system"))
+    }
+
+    @Test
+    fun `returning to system clears the language foreign key`() {
+        update("""{"language":"ja"}""").andExpect(status().isOk)
+        update("""{"language":"system"}""").andExpect(status().isOk)
+        assertNull(configuration.languageId)
+        assertEquals("system", configuration.language)
     }
 
     @Test

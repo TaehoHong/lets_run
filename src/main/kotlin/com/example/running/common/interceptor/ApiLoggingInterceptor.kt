@@ -22,7 +22,7 @@ class ApiLoggingInterceptor: HandlerInterceptor {
     val log = KotlinLogging.logger {}
 
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
-        val hideBody = isInquiry(request)
+        val hideBody = isSensitive(request)
 
         log.info { "Time: ${OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}" }
         log.info { "Requests: ${request.method} - ${request.requestURL}${if (request.queryString != null) "?" + request.queryString else ""}" }
@@ -42,7 +42,7 @@ class ApiLoggingInterceptor: HandlerInterceptor {
 
     override fun afterCompletion(request: HttpServletRequest, response: HttpServletResponse, handler: Any, ex: Exception?) {
         (response as ContentCachingResponseWrapper).also {
-            val responseBody = if (isInquiry(request)) {
+            val responseBody = if (isSensitive(request)) {
                 "[hidden]"
             } else {
                 responseBodyToLog(response)
@@ -77,7 +77,8 @@ class ApiLoggingInterceptor: HandlerInterceptor {
         return mediaType.subtype == "json" || mediaType.subtype.endsWith("+json")
     }
 
-    private fun isInquiry(request: HttpServletRequest): Boolean {
-        return request.method == "POST" && request.requestURI == "/api/v1/inquiries"
+    private fun isSensitive(request: HttpServletRequest): Boolean {
+        return (request.method == "POST" && request.requestURI == "/api/v1/inquiries") ||
+            request.requestURI.startsWith("/api/v1/notifications") || request.requestURI.startsWith("/api/v1/admin/notices")
     }
 }

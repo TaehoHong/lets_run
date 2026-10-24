@@ -4,6 +4,8 @@ import com.example.running.domain.league.entity.LeagueParticipant
 import com.example.running.domain.league.enums.LeagueTierType
 import com.example.running.domain.league.enums.PromotionStatus
 import com.example.running.domain.league.repository.LeagueParticipantRepository
+import com.example.running.domain.league.enums.LeagueSessionState
+import com.example.running.domain.notification.service.NotificationService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,7 +21,8 @@ private val logger = KotlinLogging.logger {}
 class LeagueSettlementService(
     private val leagueSessionService: LeagueSessionService,
     private val leagueParticipantRepository: LeagueParticipantRepository,
-    private val userLeagueInfoService: UserLeagueInfoService
+    private val userLeagueInfoService: UserLeagueInfoService,
+    private val notificationService: NotificationService,
 ) {
     companion object {
         const val PROMOTION_RATE = 0.3   // 상위 30% 승격
@@ -58,7 +61,8 @@ class LeagueSettlementService(
     fun executeImmediateSettlement(sessionId: Long) {
         logger.info { "즉시 정산 시작: 세션 $sessionId" }
 
-        val session = leagueSessionService.getById(sessionId)
+        val session = leagueSessionService.getForSettlement(sessionId)
+        if (session.state == LeagueSessionState.FINALIZED) return
         val participants = leagueParticipantRepository.findAllBySessionIdWithUser(sessionId).sortedByDescending { it.totalDistance }
 
         // 1. 정산 처리 (순위, 승격/강등 결정)
@@ -76,6 +80,10 @@ class LeagueSettlementService(
 
         // 3. 상태 전환: ACTIVE → FINALIZED
         session.finalize()
+
+        participants.filter { !it.isBot }.forEach { participant ->
+            participant.user?.let { notificationService.leagueResult(it.id, participant.id, participant.finalRank!!) }
+        }
 
         logger.info { "즉시 정산 완료: 세션 $sessionId, ${participants.size}명 처리" }
     }

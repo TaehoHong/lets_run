@@ -48,6 +48,10 @@ class LeagueSessionService(
         return leagueSessionRepository.findById(id).orElseThrow { RuntimeException() }
     }
 
+    @Transactional
+    fun getForSettlement(id: Long): LeagueSession = leagueSessionRepository.findForSettlement(id)
+        ?: throw RuntimeException("리그를 찾을 수 없습니다.")
+
     @Transactional(readOnly = true)
     fun getAllLeagueSeasonId(state: LeagueSessionState, cursor: Long?, pageSize: Long): CursorResult<Long> {
         val contents = leagueSessionRepository.findAllIdByStatus(state, cursor, pageSize)

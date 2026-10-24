@@ -6,11 +6,19 @@ import com.example.running.domain.league.enums.LeagueSessionState
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import jakarta.persistence.LockModeType
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
 
 @Repository
 interface LeagueSessionRepository : JpaRepository<LeagueSession, Long>, QLeagueSessionRepository {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select session from LeagueSession session where session.id = :id")
+    fun findForSettlement(@Param("id") id: Long): LeagueSession?
 
     fun findByIsActiveTrue(): LeagueSession?
 

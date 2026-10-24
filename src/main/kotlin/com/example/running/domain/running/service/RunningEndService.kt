@@ -1,6 +1,7 @@
 package com.example.running.domain.running.service
 
 import com.example.running.domain.league.service.LeagueService
+import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.point.enums.PointTypeName
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
@@ -19,10 +20,14 @@ class RunningEndService(
     private val userPointService: UserPointService,
     private val runningRecordRepository: RunningRecordRepository,
     private val leagueService: LeagueService,
+    private val notificationService: NotificationService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
     fun end(updateRunningDto: RunningRecordUpdateDto): EndRunningDto {
+        val completedAt = updateRunningDto.endDatetime
+            ?: runningRecordRepository.findByIdAndUserId(updateRunningDto.runningRecordId, updateRunningDto.userId)?.endDatetime
+            ?: OffsetDateTime.now(ZoneOffset.UTC)
         val runningRecord = runningRecordService.updateRecord(
             RunningRecordUpdateDto(
                 userId = updateRunningDto.userId,
@@ -32,7 +37,7 @@ class RunningEndService(
                 cadence = updateRunningDto.cadence,
                 heartRate = updateRunningDto.heartRate,
                 calorie = updateRunningDto.calorie,
-                endDatetime = updateRunningDto.endDatetime ?: OffsetDateTime.now(ZoneOffset.UTC)
+                endDatetime = completedAt
             )
         )
 
@@ -55,6 +60,10 @@ class RunningEndService(
 
         // 업로드 시각이 아닌 저장된 러닝 종료 시각으로 현재 시즌 거리를 재집계한다.
         leagueService.raiseCurrentLeagueDistance(updateRunningDto.userId)
+
+        if (runningRecord.isEnd && runningRecord.isStatisticIncluded) {
+            runningRecord.endDatetime?.let { notificationService.recordCompletion(updateRunningDto.userId, it.toInstant()) }
+        }
 
         return EndRunningDto(runningRecord, userPoint.point)
     }

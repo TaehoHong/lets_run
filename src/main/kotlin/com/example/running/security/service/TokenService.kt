@@ -21,7 +21,13 @@ import java.io.IOException
 import java.util.*
 
 @Service
-class TokenService {
+class TokenService(
+    @Value("\${token.secret}") private val secret: String,
+) {
+
+    init {
+        require(secret.isNotBlank()) { "token.secret must be configured" }
+    }
 
     private val log = KotlinLogging.logger {  }
 
@@ -31,7 +37,6 @@ class TokenService {
     @Value(value = "\${token.expiration.refresh}")
     var REFRESH_TOKEN_EXPIRATION : Long = 144000
 
-    val secret = "running_app_token_secret"
 
 
     @Transactional
@@ -99,7 +104,6 @@ class TokenService {
         } else {
             runCatching {
                 val token = tokenHeader.replace(JwtProperties.TOKEN_PREFIX, "")
-                    .also { log.debug{"token=$it"} }
 
                 val payload = getClaims(token).payload
 
@@ -121,7 +125,7 @@ class TokenService {
                         ErrorCode.TOKEN_IS_EXPIRED
                     }
                     else -> {
-                        log.error("error: {}", exception.message)
+                        log.error { "JWT verification failed (${exception.javaClass.simpleName})" }
                         ErrorCode.UNAUTHORIZED
                     }
                 }.run {

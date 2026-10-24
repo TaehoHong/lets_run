@@ -14,6 +14,8 @@ spring:
     timeout-per-shutdown-phase: 30s
 
   datasource:
+    hikari:
+      connection-init-sql: "SET time_zone = '+00:00'"
     driver-class-name: org.mariadb.jdbc.Driver
     url: jdbc:mariadb://localhost:3395/running
     username: local
@@ -38,6 +40,8 @@ logging:
 
 
 token:
+  # Supply a nonblank secret in each local/dev/prod server YAML; never commit real values.
+  secret: ""
   expiration:
     access: 144000
     refresh: 7884000

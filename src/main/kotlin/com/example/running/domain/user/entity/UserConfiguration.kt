@@ -22,6 +22,9 @@ class UserConfiguration(
 
     @Column(name = "language", nullable = false, length = 10)
     var language: String = "system",
+
+    @Column(name = "language_id", columnDefinition = "SMALLINT UNSIGNED")
+    var languageId: Int? = null,
 ) {
     fun update(healthImportEnabled: Boolean?, language: String? = null) {
         healthImportEnabled?.let { this.healthImportEnabled = it }

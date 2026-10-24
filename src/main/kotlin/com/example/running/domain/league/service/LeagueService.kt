@@ -10,6 +10,8 @@ import com.example.running.domain.league.service.dto.LeagueProfileDto
 import com.example.running.domain.league.service.dto.LeagueResultDto
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.repository.UserRepository
+import com.example.running.exception.ApiException
+import org.springframework.http.HttpStatus
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -118,6 +120,31 @@ class LeagueService(
     fun getUncheckedResult(userId: Long): LeagueResultDto? {
         val participant = leagueParticipantRepository.findUncheckedResultByUserId(userId)
             ?: return null
+
+        return resultFor(participant, userId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getResult(userId: Long, participantId: Long): LeagueResultDto {
+        val participant = ownedResult(userId, participantId)
+        return resultFor(participant, userId)
+            ?: throw ApiException("Result not found", HttpStatus.NOT_FOUND)
+    }
+
+    @Transactional
+    fun confirmResultById(userId: Long, participantId: Long) {
+        ownedResult(userId, participantId).markResultChecked()
+    }
+
+    private fun ownedResult(userId: Long, participantId: Long): LeagueParticipant {
+        val participant = leagueParticipantRepository.findById(participantId).orElse(null)
+        if (participant?.user?.id != userId || participant.promotionStatus == null) {
+            throw ApiException("Result not found", HttpStatus.NOT_FOUND)
+        }
+        return participant
+    }
+
+    private fun resultFor(participant: LeagueParticipant, userId: Long): LeagueResultDto? {
 
         val session = participant.leagueSession
         val sessionTier = LeagueTierType.fromId(session.tier.id)  // 정산 전 세션 티어
