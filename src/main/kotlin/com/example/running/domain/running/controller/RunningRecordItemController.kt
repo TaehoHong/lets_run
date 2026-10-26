@@ -7,7 +7,7 @@ import com.example.running.domain.running.service.RunningRecordItemService
 import com.example.running.domain.running.service.dto.RunningRecordItemDto
 import com.example.running.domain.running.service.dto.RunningRecordItemGpsPointDto as ServiceRunningRecordItemGpsPointDto
 import com.example.running.utils.JwtPayloadParser
-import com.example.running.utils.convertToOffsetDateTime
+import com.example.running.domain.running.service.RunningValidationService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -15,17 +15,21 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.RequestAttribute
+import java.time.Instant
 
 
 @RequestMapping("/api/v1/running")
 @RestController
 class RunningRecordItemController(
-    private val runningRecordItemService: RunningRecordItemService
+    private val runningRecordItemService: RunningRecordItemService,
+    private val validation: RunningValidationService,
 ){
 
     @PostMapping("/{id}/items")
     fun recordItem(@PathVariable(name = "id") runningRecordId: Long,
-                   @Valid @RequestBody postRequest: PostRequest
+                   @Valid @RequestBody postRequest: PostRequest,
+                   @RequestAttribute(name = "running.receivedAt", required = false) receivedAt: Instant? = null
     ) {
         val userId = JwtPayloadParser.getUserId()
 
@@ -38,8 +42,8 @@ class RunningRecordItemController(
                 minHeartRate = item.minHeartRate,
                 maxHeartRate = item.maxHeartRate,
                 orderIndex = item.orderIndex,
-                startDateTime = convertToOffsetDateTime(item.startTimeStamp),
-                endDateTime = convertToOffsetDateTime(item.endTimeStamp),
+                startDateTime = validation.timestamp(item.startTimeStamp),
+                endDateTime = validation.timestamp(item.endTimeStamp),
                 gpsPoints = item.gpsPoints?.map {
                     ServiceRunningRecordItemGpsPointDto(
                         latitude = it.latitude,
@@ -52,7 +56,7 @@ class RunningRecordItemController(
                 } ?: emptyList(),
             )
         }.let {
-            runningRecordItemService.save(userId, runningRecordId, it)
+            runningRecordItemService.save(userId, runningRecordId, it, receivedAt ?: Instant.now())
         }
     }
 

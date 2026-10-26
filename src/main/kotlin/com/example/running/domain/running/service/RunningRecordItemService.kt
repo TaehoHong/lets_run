@@ -7,6 +7,8 @@ import com.example.running.domain.running.service.dto.RunningRecordItemDto
 import com.example.running.exception.ApiError
 import com.example.running.exception.ApiException
 import java.time.ZoneOffset
+import java.time.Instant
+import com.example.running.domain.user.service.UserConfigurationService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -14,12 +16,22 @@ import org.springframework.transaction.annotation.Transactional
 class RunningRecordItemService(
     private val runningRecordItemRepository: RunningRecordItemRepository,
     private val runningRecordRepository: RunningRecordRepository,
+    private val configurations: UserConfigurationService,
+    private val validation: RunningValidationService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun save(userId: Long, runningRecordId: Long, runningRecordItemDtos: List<RunningRecordItemDto>) {
+    fun save(userId: Long, runningRecordId: Long, runningRecordItemDtos: List<RunningRecordItemDto>, receivedAt: Instant = Instant.now()) {
+        configurations.getOrCreateForUpdate(userId)
         val record = runningRecordRepository.findOwnedForUpdate(runningRecordId, userId)
             ?: throw ApiException(ApiError.NOT_AUTHORIZED)
+        runningRecordItemDtos.forEach { item ->
+            validation.metrics(!item.startDateTime.isBefore(record.startDatetime))
+            record.endDatetime?.let { validation.metrics(!item.endDateTime.isAfter(it)) }
+            validation.metrics(item.minHeartRate in 0..255 && item.maxHeartRate in 0..255)
+            validation.validate(item.startDateTime, item.endDateTime, item.distance, item.durationSec,
+                item.cadence, item.heartRate, 0, receivedAt, item.gpsPoints)
+        }
         val stored = runningRecordItemRepository.findAllByRunningRecord_IdOrderByOrderIndexAsc(runningRecordId)
 
         runningRecordItemDtos.filterNot { item ->

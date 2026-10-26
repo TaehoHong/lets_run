@@ -25,7 +25,7 @@ class ApiLoggingInterceptor: HandlerInterceptor {
         val hideBody = isSensitive(request)
 
         log.info { "Time: ${OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))}" }
-        log.info { "Requests: ${request.method} - ${request.requestURL}${if (request.queryString != null) "?" + request.queryString else ""}" }
+        log.info { "Requests: ${request.method} - ${request.requestURL}${if (request.queryString != null && !hideBody) "?" + request.queryString else ""}" }
         log.info { "AccessToken: ${if (hideBody) "[hidden]" else request.getHeader(JwtProperties.ACCESS_TOKEN_HEADER)}" }
         log.info { "RefreshToken: ${if (hideBody) "[hidden]" else request.getHeader(JwtProperties.REFRESH_TOKEN_HEADER)}" }
 
@@ -78,7 +78,10 @@ class ApiLoggingInterceptor: HandlerInterceptor {
     }
 
     private fun isSensitive(request: HttpServletRequest): Boolean {
-        return (request.method == "POST" && request.requestURI == "/api/v1/inquiries") ||
+        return request.requestURI == "/api/v1/running" ||
+            request.requestURI.startsWith("/api/v1/running/") ||
+            request.requestURI.startsWith("/api/v1/garmin") ||
+            (request.method == "POST" && request.requestURI == "/api/v1/inquiries") ||
             request.requestURI.startsWith("/api/v1/notifications") || request.requestURI.startsWith("/api/v1/admin/notices")
     }
 }

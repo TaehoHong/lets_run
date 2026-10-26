@@ -3,6 +3,7 @@ package com.example.running.domain.running.repository
 import com.example.running.domain.running.controller.dto.RunningRecordSearchRequest
 import com.example.running.domain.running.entity.QRunningRecord.Companion.runningRecord
 import com.example.running.domain.running.entity.RunningRecord
+import com.example.running.domain.running.enums.RunningAcceptanceStatus
 import com.example.running.domain.running.enums.RunningRecordSource
 import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.dsl.Expressions
@@ -146,11 +147,18 @@ class QRunningRecordRepositoryImpl(
             .where(
                 runningRecord.user.id.eq(userId),
                 runningRecord.isEnd.isTrue,
-                runningRecord.isStatisticIncluded.isTrue,
-                runningRecord.endDatetime.isNotNull,
-                runningRecord.startDatetime.before(end),
-                runningRecord.endDatetime.after(start)
-            ).fetch()
+                runningRecord.acceptanceStatus.eq(RunningAcceptanceStatus.ACCEPTED)
+                    .or(runningRecord.acceptanceStatus.eq(RunningAcceptanceStatus.PERSONAL_ONLY)
+                        .and(runningRecord.isStatisticIncluded.isTrue)),
+                runningRecord.originalStartDatetime.isNotNull,
+                runningRecord.originalEndDatetime.isNotNull,
+                runningRecord.originalStartDatetime.before(runningRecord.originalEndDatetime),
+                runningRecord.originalStartDatetime.before(end),
+                runningRecord.originalEndDatetime.after(start)
+            )
+            .orderBy(runningRecord.id.asc())
+            .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+            .fetch()
     }
 
     override fun markPointAwardedIfEligible(userId: Long, runningRecordId: Long): Boolean {
@@ -159,6 +167,7 @@ class QRunningRecordRepositoryImpl(
             .where(
                 runningRecord.id.eq(runningRecordId),
                 runningRecord.user.id.eq(userId),
+                runningRecord.acceptanceStatus.eq(RunningAcceptanceStatus.ACCEPTED),
                 runningRecord.pointEligible.isTrue,
                 runningRecord.pointAwarded.isFalse
             )
@@ -170,15 +179,16 @@ class QRunningRecordRepositoryImpl(
         start: OffsetDateTime,
         end: OffsetDateTime
     ): Long {
-        return queryFactory.select(runningRecord.distance.sumLong())
+        return queryFactory.select(runningRecord.leagueDistanceOverride.sumLong())
             .from(runningRecord)
             .where(
                 runningRecord.user.id.eq(userId),
+                runningRecord.acceptanceStatus.eq(RunningAcceptanceStatus.ACCEPTED),
                 runningRecord.isEnd.isTrue,
                 runningRecord.isStatisticIncluded.isTrue,
-                runningRecord.endDatetime.isNotNull,
-                runningRecord.endDatetime.goe(start),
-                runningRecord.endDatetime.loe(end)
+                runningRecord.leagueEndDatetimeOverride.isNotNull,
+                runningRecord.leagueEndDatetimeOverride.goe(start),
+                runningRecord.leagueEndDatetimeOverride.loe(end)
             )
             .fetchOne() ?: 0L
     }

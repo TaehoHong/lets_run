@@ -8,8 +8,10 @@ import com.example.running.domain.running.service.RunningStartService
 import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.helper.authenticateWithUser
 import com.example.running.utils.JwtPayloadParser
-import com.example.running.utils.convertToOffsetDateTime
+import com.example.running.domain.running.service.RunningValidationService
+import java.time.ZoneOffset
 import org.springframework.web.bind.annotation.*
+import java.time.Instant
 
 
 @RequestMapping("/api/v1/running")
@@ -17,13 +19,16 @@ import org.springframework.web.bind.annotation.*
 class RunningRecordController(
     private val runningStartService: RunningStartService,
     private val runningEndService: RunningEndService,
-    private val runningRecordService: RunningRecordService
+    private val runningRecordService: RunningRecordService,
+    private val validation: RunningValidationService,
 ){
 
     @PostMapping
-    fun startRecord(@RequestBody creationRunningRecord: CreationRunningRecord): StartRunningResponse {
+    fun startRecord(@RequestBody creationRunningRecord: CreationRunningRecord,
+                    @RequestAttribute(name = "running.receivedAt", required = false) receivedAt: Instant? = null): StartRunningResponse {
         return authenticateWithUser { userId ->
-            runningStartService.startRecord(userId, creationRunningRecord.getStartDatetime())
+            runningStartService.startRecord(userId, creationRunningRecord.startTimestamp?.let { validation.timestamp(it) }
+                ?: (receivedAt ?: Instant.now()).atOffset(ZoneOffset.UTC))
                 .let { StartRunningResponse(it.id) }
         }
     }
@@ -64,7 +69,8 @@ class RunningRecordController(
     }
 
     @PostMapping("/{id}/end")
-    fun end(@PathVariable id: Long, @RequestBody request: EndRunningRequest): EndRunningResponse {
+    fun end(@PathVariable id: Long, @RequestBody request: EndRunningRequest,
+            @RequestAttribute(name = "running.receivedAt", required = false) receivedAt: Instant? = null): EndRunningResponse {
         return runningEndService.end(
             RunningRecordUpdateDto(
                 userId = JwtPayloadParser.getUserId(),
@@ -74,8 +80,8 @@ class RunningRecordController(
                 cadence = request.cadence,
                 heartRate = request.heartRate,
                 calorie = request.calorie,
-                endDatetime = request.endTimestamp?.let { convertToOffsetDateTime(it) }
-            )
+                endDatetime = request.endTimestamp?.let { validation.timestamp(it) }
+            ), receivedAt ?: Instant.now()
         ).let {
             EndRunningResponse(it)
         }
@@ -84,7 +90,8 @@ class RunningRecordController(
     @PutMapping("/{id}")
     fun update(@PathVariable id: Long,
                   @RequestParam(required = false, defaultValue = "UTC") timezone: String,
-                  @RequestBody updateRequest: UpdateRecordRequest) {
+                  @RequestBody updateRequest: UpdateRecordRequest,
+                  @RequestAttribute(name = "running.receivedAt", required = false) receivedAt: Instant? = null) {
 
         runningRecordService.updateRecord(
             RunningRecordUpdateDto(
@@ -96,9 +103,9 @@ class RunningRecordController(
                 cadence = updateRequest.cadence,
                 heartRate = updateRequest.heartRate,
                 calorie = updateRequest.calorie,
-                startDatetime = updateRequest.startTimestamp?.let{ convertToOffsetDateTime(it, timezone) } ,
-                endDatetime = updateRequest.endTimestamp?.let { convertToOffsetDateTime(it, timezone) }
-            )
+                startDatetime = updateRequest.startTimestamp?.let{ validation.timestamp(it, timezone) } ,
+                endDatetime = updateRequest.endTimestamp?.let { validation.timestamp(it, timezone) }
+            ), receivedAt ?: Instant.now()
         )
     }
 }

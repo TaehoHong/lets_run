@@ -4,6 +4,7 @@ import com.example.running.domain.auth.service.AppleTokenRevokeService
 import com.example.running.domain.auth.service.OAuthTokenService
 import com.example.running.domain.auth.service.dto.UserCreationDto
 import com.example.running.domain.notification.service.NotificationService
+import com.example.running.domain.garmin.service.GarminConnectionService
 import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.user.dto.UserDataDto
@@ -24,6 +25,7 @@ class UserService(
     private val oAuthTokenService: OAuthTokenService,
     private val appleTokenRevokeService: AppleTokenRevokeService,
     private val notificationService: NotificationService,
+    private val garminConnectionService: GarminConnectionService,
 ) {
     private val log = KotlinLogging.logger {}
 
@@ -84,6 +86,7 @@ class UserService(
 
         // 사용자 익명화
         user.withdraw()
+        garminConnectionService.stopImport(userId)
         notificationService.detachAllDevices(userId)
 
         // OAuth 토큰 삭제

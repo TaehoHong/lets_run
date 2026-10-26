@@ -10,7 +10,8 @@ class EndRunningResponse(
     val cadence: Short,
     val heartRate: Short,
     val calorie: Int,
-    val point: Int
+    val point: Int,
+    val acceptanceStatus: String = "ACCEPTED"
 ) {
     constructor(dto: EndRunningDto) : this(
         id = dto.runningRecordId,
@@ -20,6 +21,7 @@ class EndRunningResponse(
         cadence = dto.cadence,
         heartRate = dto.heartRate,
         calorie = dto.calorie,
-        point = dto.point
+        point = dto.point,
+        acceptanceStatus = dto.acceptanceStatus
     )
 }

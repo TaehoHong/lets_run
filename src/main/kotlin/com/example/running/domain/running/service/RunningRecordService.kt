@@ -10,6 +10,8 @@ import com.example.running.domain.running.service.dto.RunningRecordUpdateDto
 import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.exception.ApiError
 import com.example.running.exception.ApiException
+import com.example.running.domain.user.service.UserConfigurationService
+import java.time.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional
 class RunningRecordService(
     private val runningRecordRepository: RunningRecordRepository,
     private val shoeService: ShoeService,
+    private val configurations: UserConfigurationService,
+    private val validation: RunningValidationService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -26,6 +30,7 @@ class RunningRecordService(
     
     @Transactional(rollbackFor = [Exception::class])
     fun endPreviousRecords(userId: Long) {
+        configurations.getOrCreateForUpdate(userId)
         runningRecordRepository.updateIsEndById(true, userId)
     }
 
@@ -55,6 +60,7 @@ class RunningRecordService(
 
     @Transactional(rollbackFor = [Exception::class])
     fun updateShoe(userId: Long, runningRecordId: Long, shoeId: Long): RunningRecordDetailDto {
+        configurations.getOrCreateForUpdate(userId)
         val runningRecord = getEndedStatisticRecordByIdAndUserId(runningRecordId, userId)
         val shoe = shoeService.getActiveShoe(userId, shoeId)
         val previousShoeId = runningRecord.shoe?.id
@@ -70,9 +76,21 @@ class RunningRecordService(
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun updateRecord(updateDto: RunningRecordUpdateDto): RunningRecord {
+    fun updateRecord(updateDto: RunningRecordUpdateDto, receivedAt: Instant = Instant.now()): RunningRecord {
+        configurations.getOrCreateForUpdate(updateDto.userId)
         return getByIdAndUserId(updateDto.runningRecordId, updateDto.userId)
             .apply {
+                val mergedEnd = updateDto.endDatetime ?: endDatetime
+                if (isEnd || mergedEnd != null) {
+                    validation.validate(updateDto.startDatetime ?: startDatetime,
+                        requireNotNull(mergedEnd), updateDto.distance ?: distance,
+                        updateDto.durationSec ?: durationSec, updateDto.cadence ?: cadence,
+                        updateDto.heartRate ?: heartRate, updateDto.calorie ?: calorie, receivedAt)
+                } else {
+                    validation.metrics((updateDto.distance ?: distance) >= 0 && (updateDto.durationSec ?: durationSec) >= 0 &&
+                        (updateDto.calorie ?: calorie) >= 0 && (updateDto.cadence ?: cadence) in 0..255 &&
+                        (updateDto.heartRate ?: heartRate) in 0..255)
+                }
                 this.update(
                     updateDto.shoeId,
                     updateDto.distance,
@@ -88,8 +106,12 @@ class RunningRecordService(
             }
     }
 
+    fun refreshShoeTotals(records: List<RunningRecord>) {
+        records.mapNotNull { it.shoe?.id }.distinct().forEach { updateShoeTotalDistance(it) }
+    }
+
     private fun getByIdAndUserId(id: Long, userId: Long): RunningRecord {
-        return runningRecordRepository.findByIdAndUserId(id, userId)
+        return runningRecordRepository.findOwnedForUpdate(id, userId)
             ?: run { throw RuntimeException("존재하지 않는 러닝 기록입니다.") }
     }
 

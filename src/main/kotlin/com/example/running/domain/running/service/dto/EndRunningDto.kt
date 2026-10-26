@@ -12,6 +12,7 @@ class EndRunningDto(
     val heartRate: Short,
     val calorie: Int,
     val point: Int,
+    val acceptanceStatus: String = "ACCEPTED",
 ) {
     constructor(record: RunningRecord, point: Int): this(
         userId = record.user.id,
@@ -22,6 +23,7 @@ class EndRunningDto(
         cadence = record.cadence,
         heartRate = record.heartRate,
         calorie = record.calorie,
-        point = point
+        point = point,
+        acceptanceStatus = record.acceptanceStatus.name
     )
 }

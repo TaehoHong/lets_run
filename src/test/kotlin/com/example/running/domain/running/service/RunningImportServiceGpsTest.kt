@@ -1,8 +1,5 @@
 package com.example.running.domain.running.service
 
-import com.example.running.domain.notification.service.NotificationService
-import com.example.running.domain.league.service.LeagueService
-import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.running.controller.dto.ImportRunningBatchRequest
 import com.example.running.domain.running.controller.dto.ImportRunningRecordItemRequest
 import com.example.running.domain.running.controller.dto.ImportRunningRecordRequest
@@ -29,15 +26,16 @@ class RunningImportServiceGpsTest {
         val records = mock(RunningRecordRepository::class.java)
         val items = mock(RunningRecordItemRepository::class.java)
         val configuration = mock(UserConfigurationService::class.java)
-        val league = mock(LeagueService::class.java)
-        val service = RunningImportService(records, items, mock(UserPointService::class.java), configuration, league, mock(NotificationService::class.java))
+        val validation = RunningValidationService()
+        val acceptance = mock(RunningAcceptanceService::class.java)
+        val service = RunningImportService(records, items, configuration, acceptance, validation)
         val existing = RunningRecord(id = 10, user = User(id = 1), source = RunningRecordSource.HEALTH)
         `when`(configuration.getOrCreateForUpdate(1)).thenReturn(UserConfiguration(1, true))
         `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.HEALTH, "workout")).thenReturn(existing)
-        val start = OffsetDateTime.parse("2026-10-01T00:00:00Z").toInstant().toEpochMilli()
-        val end = start + 600_000
+        val start = OffsetDateTime.parse("2026-10-01T00:00:00Z").toEpochSecond()
+        val end = start + 600
         val points = (0..5000).map { index ->
-            RunningRecordItemGpsPointDto(37.0 + index * 0.000001, 127.0, start + index, 3.0, 0.0, null)
+            RunningRecordItemGpsPointDto(37.0 + index * 0.000001, 127.0, start * 1000 + index, 3.0, 0.0, null)
         }
         var captured: List<RunningRecordItem> = emptyList()
         doAnswer { call -> captured = call.getArgument(0); null }.`when`(items).saveInBatch(anyList())

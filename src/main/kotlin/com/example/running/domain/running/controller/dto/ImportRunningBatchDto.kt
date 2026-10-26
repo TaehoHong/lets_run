@@ -14,6 +14,10 @@ class ImportRunningRecordRequest(
     val startTimestamp: Long,
     val endTimestamp: Long,
     val items: List<ImportRunningRecordItemRequest> = emptyList(),
+    @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = OptionalRunningStringDeserializer::class)
+    val recordingMethod: String? = null,
+    @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = OptionalRunningStringDeserializer::class)
+    val sourceBundleId: String? = null,
 )
 
 class ImportRunningRecordItemRequest(
@@ -41,4 +45,15 @@ class ImportRunningBatchResponse(
     val duplicateCount: Int,
     val awardedPoint: Int,
     val leagueDistanceChanged: Boolean = false,
+    val personalOnlyCount: Int = 0,
 )
+
+/** Prevent Jackson string coercion from accepting numeric or boolean provider metadata. */
+class OptionalRunningStringDeserializer : com.fasterxml.jackson.databind.JsonDeserializer<String>() {
+    override fun deserialize(parser: com.fasterxml.jackson.core.JsonParser, context: com.fasterxml.jackson.databind.DeserializationContext): String {
+        if (parser.currentToken != com.fasterxml.jackson.core.JsonToken.VALUE_STRING) {
+            throw com.fasterxml.jackson.databind.JsonMappingException.from(parser, "Invalid running metadata")
+        }
+        return parser.text
+    }
+}

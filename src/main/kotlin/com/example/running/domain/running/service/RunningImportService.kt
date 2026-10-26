@@ -1,10 +1,5 @@
 package com.example.running.domain.running.service
 
-import com.example.running.domain.league.service.LeagueService
-import com.example.running.domain.notification.service.NotificationService
-import com.example.running.domain.point.enums.PointTypeName
-import com.example.running.domain.point.service.UserPointService
-import com.example.running.domain.point.service.dto.PointUsageDto
 import com.example.running.domain.running.controller.dto.ImportRunningBatchRequest
 import com.example.running.domain.running.controller.dto.ImportRunningBatchResponse
 import com.example.running.domain.running.controller.dto.ImportRunningRecordRequest
@@ -16,38 +11,43 @@ import com.example.running.domain.running.repository.RunningRecordItemRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.service.UserConfigurationService
-import com.example.running.utils.convertToOffsetDateTime
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import com.example.running.domain.running.enums.RunningAcceptanceStatus
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 
 @Service
 class RunningImportService(
     private val runningRecordRepository: RunningRecordRepository,
     private val runningRecordItemRepository: RunningRecordItemRepository,
-    private val userPointService: UserPointService,
     private val userConfigurationService: UserConfigurationService,
-    private val leagueService: LeagueService,
-    private val notificationService: NotificationService,
+    private val acceptance: RunningAcceptanceService,
+    private val validation: RunningValidationService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
-    fun importBatch(userId: Long, request: ImportRunningBatchRequest): ImportRunningBatchResponse {
-        validateBatch(request)
+    fun importBatch(userId: Long, request: ImportRunningBatchRequest, receivedAt: Instant = Instant.now()): ImportRunningBatchResponse =
+        importRecords(userId, request, RunningRecordSource.HEALTH, null, receivedAt = receivedAt)
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun importGarmin(userId: Long, request: ImportRunningBatchRequest, connectedAt: OffsetDateTime, manual: Boolean = false, receivedAt: Instant = Instant.now()): ImportRunningBatchResponse =
+        importRecords(userId, request, RunningRecordSource.GARMIN, connectedAt, manual, receivedAt)
+
+    private fun importRecords(userId: Long, request: ImportRunningBatchRequest,
+                              source: RunningRecordSource, connectedAt: OffsetDateTime?, manual: Boolean = false, receivedAt: Instant): ImportRunningBatchResponse {
+        validateBatch(request, receivedAt)
         logger.info(
-            "Health import batch received: recordCount={}, recordsWithItems={}, totalGpsPoints={}",
+            "Running import batch received: recordCount={}, recordsWithItems={}, totalGpsPoints={}",
             request.records.size,
             request.records.count { it.items.isNotEmpty() },
             request.records.sumOf { record -> record.items.sumOf { item -> item.gpsPoints.size } },
         )
 
         val configuration = userConfigurationService.getOrCreateForUpdate(userId)
-        if (!configuration.healthImportEnabled) {
+        if (source == RunningRecordSource.HEALTH && !configuration.healthImportEnabled) {
             logger.info("Health import batch skipped: disabled")
             return ImportRunningBatchResponse(
                 createdCount = 0,
@@ -58,28 +58,22 @@ class RunningImportService(
             )
         }
 
-        val previousLastSyncedAt = configuration.healthImportLastSyncedAt
+        val previousLastSyncedAt = if (source == RunningRecordSource.GARMIN) connectedAt else configuration.healthImportLastSyncedAt
         val requestMaxEndDatetime = request.records
-            .map { convertToOffsetDateTime(it.endTimestamp) }
+            .map { validation.timestamp(it.endTimestamp) }
             .maxOrNull()
 
         val results = request.records.map { recordRequest ->
-            importOne(userId, recordRequest, previousLastSyncedAt)
+            importOne(userId, recordRequest, previousLastSyncedAt, source, manual, receivedAt)
         }
-        results.mapNotNull { it.leagueSyncTarget }
-            .filter { it.isEnd && it.isStatisticIncluded }
-            .mapNotNull { it.endDatetime }
-            .maxOrNull()?.let { notificationService.recordCompletion(userId, it.toInstant()) }
-        resolveNextLastSyncedAt(userId, previousLastSyncedAt, requestMaxEndDatetime)
-            ?.let { configuration.markHealthImportLastSynced(it) }
-        val leagueDistanceChanged = if (results.any { it.leagueSyncTarget != null }) {
-            leagueService.raiseCurrentLeagueDistance(userId)
-        } else {
-            false
+        if (source == RunningRecordSource.HEALTH) {
+            resolveNextLastSyncedAt(userId, previousLastSyncedAt, requestMaxEndDatetime)
+                ?.let { configuration.markHealthImportLastSynced(it) }
         }
+        val leagueDistanceChanged = results.any { it.leagueDistanceChanged }
 
         logger.info(
-            "Health import batch completed: recordCount={}, createdCount={}, updatedCount={}, duplicateCount={}, leagueDistanceChanged={}",
+            "Running import batch completed: recordCount={}, createdCount={}, updatedCount={}, duplicateCount={}, leagueDistanceChanged={}",
             request.records.size,
             results.count { it.status == ImportRunningRecordStatus.CREATED },
             results.count { it.status == ImportRunningRecordStatus.UPDATED },
@@ -93,20 +87,24 @@ class RunningImportService(
             duplicateCount = results.count { it.status == ImportRunningRecordStatus.DUPLICATE },
             awardedPoint = results.sumOf { it.awardedPoint },
             leagueDistanceChanged = leagueDistanceChanged,
+            personalOnlyCount = results.count { it.personalOnly },
         )
     }
 
     private fun importOne(
         userId: Long,
         request: ImportRunningRecordRequest,
-        previousLastSyncedAt: OffsetDateTime?
+        previousLastSyncedAt: OffsetDateTime?,
+        source: RunningRecordSource,
+        manual: Boolean,
+        receivedAt: Instant,
     ): ImportResult {
-        val startDatetime = convertToOffsetDateTime(request.startTimestamp)
-        val endDatetime = convertToOffsetDateTime(request.endTimestamp)
+        val startDatetime = validation.timestamp(request.startTimestamp)
+        val endDatetime = validation.timestamp(request.endTimestamp)
 
         val sameExternalRecord = runningRecordRepository.findByUserIdAndSourceAndExternalId(
             userId = userId,
-            source = RunningRecordSource.HEALTH,
+            source = source,
             externalId = request.externalId
         )
 
@@ -115,22 +113,12 @@ class RunningImportService(
             if (request.items.isNotEmpty()) {
                 replaceItems(sameExternalRecord.id, request)
             } else {
-                logger.info("Health import update preserved existing items: incomingItemsEmpty=true")
+                logger.info("Running import update preserved existing items: incomingItemsEmpty=true")
             }
             return ImportResult(
-                status = ImportRunningRecordStatus.UPDATED,
+                status = if (sameExternalRecord.acceptanceStatus == RunningAcceptanceStatus.DUPLICATE) ImportRunningRecordStatus.DUPLICATE else ImportRunningRecordStatus.UPDATED,
                 awardedPoint = 0,
-                leagueSyncTarget = sameExternalRecord,
-            )
-        }
-
-        val overlapRecord = runningRecordRepository.findOverlapCandidates(userId, startDatetime, endDatetime)
-            .firstOrNull { candidate -> isDuplicateCandidate(candidate, request, startDatetime, endDatetime) }
-
-        if (overlapRecord != null) {
-            return ImportResult(
-                status = ImportRunningRecordStatus.DUPLICATE,
-                awardedPoint = 0,
+                personalOnly = sameExternalRecord.acceptanceStatus == RunningAcceptanceStatus.PERSONAL_ONLY,
             )
         }
 
@@ -145,23 +133,26 @@ class RunningImportService(
                 heartRate = request.heartRate,
                 calorie = request.calorie,
                 isStatisticIncluded = true,
-                isEnd = true,
-                source = RunningRecordSource.HEALTH,
+                isEnd = false,
+                source = source,
                 externalId = request.externalId,
                 importedDatetime = now,
-                pointEligible = isPointEligibleForNewImport(previousLastSyncedAt, endDatetime),
+                pointEligible = false,
                 pointAwarded = false,
                 startDatetime = startDatetime,
                 endDatetime = endDatetime,
             )
         )
         replaceItems(savedRecord.id, request)
-        val awardedPoint = awardPointIfNeeded(userId, savedRecord)
+        val recorded = if (source == RunningRecordSource.GARMIN) !manual else request.recordingMethod == "RECORDED"
+        val result = acceptance.accept(userId, savedRecord, recorded,
+            isPointEligibleForNewImport(previousLastSyncedAt, endDatetime), receivedAt)
 
         return ImportResult(
-            status = ImportRunningRecordStatus.CREATED,
-            awardedPoint = awardedPoint,
-            leagueSyncTarget = savedRecord,
+            status = if (savedRecord.acceptanceStatus == RunningAcceptanceStatus.DUPLICATE) ImportRunningRecordStatus.DUPLICATE else ImportRunningRecordStatus.CREATED,
+            awardedPoint = result.awardedPoint,
+            leagueDistanceChanged = result.leagueDistanceChanged,
+            personalOnly = savedRecord.acceptanceStatus == RunningAcceptanceStatus.PERSONAL_ONLY,
         )
     }
 
@@ -224,8 +215,8 @@ class RunningImportService(
                     minHeartRate = item.minHeartRate,
                     maxHeartRate = item.maxHeartRate,
                     orderIndex = item.orderIndex,
-                    startDatetime = convertToOffsetDateTime(item.startTimestamp),
-                    endDatetime = convertToOffsetDateTime(item.endTimestamp),
+                    startDatetime = validation.timestamp(item.startTimestamp),
+                    endDatetime = validation.timestamp(item.endTimestamp),
                     gpsPointsJson = RunningRecordItemGpsCodec.encode(
                         item.gpsPoints.map { gpsPoint ->
                             com.example.running.domain.running.service.dto.RunningRecordItemGpsPointDto(
@@ -243,72 +234,26 @@ class RunningImportService(
         )
     }
 
-    private fun isDuplicateCandidate(
-        candidate: RunningRecord,
-        request: ImportRunningRecordRequest,
-        startDatetime: OffsetDateTime,
-        endDatetime: OffsetDateTime
-    ): Boolean {
-        val candidateEnd = candidate.endDatetime ?: return false
-        val startDiffSeconds = abs(candidate.startDatetime.toEpochSecond() - startDatetime.toEpochSecond())
-        val endDiffSeconds = abs(candidateEnd.toEpochSecond() - endDatetime.toEpochSecond())
-        val startsOrEndsClose = startDiffSeconds <= SAME_RUN_TIME_DIFF_SECONDS || endDiffSeconds <= SAME_RUN_TIME_DIFF_SECONDS
-
-        val overlapSeconds = min(candidateEnd.toEpochSecond(), endDatetime.toEpochSecond()) -
-            max(candidate.startDatetime.toEpochSecond(), startDatetime.toEpochSecond())
-        val shorterDuration = min(
-            max(1, candidateEnd.toEpochSecond() - candidate.startDatetime.toEpochSecond()),
-            max(1, endDatetime.toEpochSecond() - startDatetime.toEpochSecond())
-        )
-        val mostlyOverlaps = overlapSeconds > 0 && overlapSeconds.toDouble() / shorterDuration >= SAME_RUN_OVERLAP_RATIO
-
-        if (!startsOrEndsClose && !mostlyOverlaps) return false
-        return distancesAreSimilar(candidate.distance, request.distance)
-    }
-
-    private fun distancesAreSimilar(left: Int, right: Int): Boolean {
-        if (left <= 0 || right <= 0) return true
-        val denominator = max(left, right)
-        return abs(left - right).toDouble() / denominator <= SAME_RUN_DISTANCE_DIFF_RATIO
-    }
-
-    private fun awardPointIfNeeded(userId: Long, record: RunningRecord): Int {
-        val point = record.distance / 100
-        if (point <= 0) return 0
-
-        val marked = runningRecordRepository.markPointAwardedIfEligible(userId, record.id)
-        if (!marked) return 0
-
-        record.pointAwarded = true
-        userPointService.updatePoint(
-            PointUsageDto(
-                userId = userId,
-                runningRecordId = record.id,
-                point = point,
-                pointTypeId = PointTypeName.RUNNING.id
-            )
-        )
-        return point
-    }
-
-    private fun validateBatch(request: ImportRunningBatchRequest) {
-        require(request.records.size <= MAX_BATCH_SIZE) { "한 번에 가져올 수 있는 러닝 기록은 최대 ${MAX_BATCH_SIZE}개입니다." }
-
-        val externalIds = request.records.map { it.externalId.trim() }
-        require(externalIds.all { it.isNotBlank() }) { "외부 러닝 기록 ID가 필요합니다." }
-        require(externalIds.toSet().size == externalIds.size) { "중복된 외부 러닝 기록 ID가 있습니다." }
-
+    private fun validateBatch(request: ImportRunningBatchRequest, receivedAt: Instant) {
+        validation.metrics(request.records.size <= MAX_BATCH_SIZE)
+        val ids = request.records.map { it.externalId.trim() }
+        validation.metrics(ids.all { it.isNotBlank() && it.length <= 191 } && ids.toSet().size == ids.size)
         request.records.forEach { record ->
-            require(record.distance >= 0) { "러닝 거리는 0 이상이어야 합니다." }
-            require(record.durationSec >= 0) { "러닝 시간은 0 이상이어야 합니다." }
-            require(record.startTimestamp < record.endTimestamp) { "러닝 종료 시각은 시작 시각보다 늦어야 합니다." }
-            require(record.items.size <= MAX_ITEM_COUNT_PER_RECORD) { "러닝 구간은 기록당 최대 ${MAX_ITEM_COUNT_PER_RECORD}개입니다." }
-            val orderIndexes = record.items.map { it.orderIndex }
-            require(orderIndexes.toSet().size == orderIndexes.size) { "러닝 구간 순서가 중복되었습니다." }
+            validation.metrics(record.recordingMethod == null || record.recordingMethod in setOf("RECORDED", "MANUAL", "UNKNOWN"))
+            validation.metrics(record.sourceBundleId == null || record.sourceBundleId.length <= 255)
+            validation.metrics(record.startTimestamp in 0..253402300799 && record.endTimestamp in 0..253402300799)
+            val start = validation.timestamp(record.startTimestamp)
+            val end = validation.timestamp(record.endTimestamp)
+            validation.validate(start, end, record.distance, record.durationSec, record.cadence, record.heartRate, record.calorie, receivedAt)
+            validation.metrics(record.items.size <= MAX_ITEM_COUNT_PER_RECORD)
+            validation.metrics(record.items.map { it.orderIndex }.toSet().size == record.items.size)
             record.items.forEach { item ->
-                require(item.distance >= 0) { "러닝 구간 거리는 0 이상이어야 합니다." }
-                require(item.durationSec >= 0) { "러닝 구간 시간은 0 이상이어야 합니다." }
-                require(item.startTimestamp < item.endTimestamp) { "러닝 구간 종료 시각은 시작 시각보다 늦어야 합니다." }
+                validation.metrics(item.startTimestamp >= record.startTimestamp && item.endTimestamp <= record.endTimestamp)
+                validation.metrics(item.minHeartRate in 0..255 && item.maxHeartRate in 0..255)
+                validation.validate(validation.timestamp(item.startTimestamp), validation.timestamp(item.endTimestamp),
+                    item.distance, item.durationSec, item.cadence, item.heartRate, 0, receivedAt,
+                    item.gpsPoints.map { com.example.running.domain.running.service.dto.RunningRecordItemGpsPointDto(
+                        it.latitude, it.longitude, it.timestampMs, it.speed, it.altitude, it.accuracy) })
             }
         }
     }
@@ -316,15 +261,13 @@ class RunningImportService(
     companion object {
         private const val MAX_BATCH_SIZE = 100
         private const val MAX_ITEM_COUNT_PER_RECORD = 1
-        private const val SAME_RUN_TIME_DIFF_SECONDS = 300
-        private const val SAME_RUN_OVERLAP_RATIO = 0.8
-        private const val SAME_RUN_DISTANCE_DIFF_RATIO = 0.2
         private val logger = LoggerFactory.getLogger(RunningImportService::class.java)
     }
 
     private data class ImportResult(
         val status: ImportRunningRecordStatus,
         val awardedPoint: Int,
-        val leagueSyncTarget: RunningRecord? = null,
+        val leagueDistanceChanged: Boolean = false,
+        val personalOnly: Boolean = false,
     )
 }

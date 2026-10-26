@@ -16,7 +16,7 @@ import java.time.OffsetDateTime
 class RunningRecordItemServiceTest {
     private val records = mock(RunningRecordRepository::class.java)
     private val items = mock(RunningRecordItemRepository::class.java)
-    private val service = RunningRecordItemService(items, records)
+    private val service = RunningRecordItemService(items, records, mock(com.example.running.domain.user.service.UserConfigurationService::class.java), RunningValidationService())
     private val stored = mutableListOf<RunningRecordItem>()
     private val timestamp = OffsetDateTime.parse("2026-10-01T00:00:00Z")
 
@@ -25,7 +25,7 @@ class RunningRecordItemServiceTest {
     )
 
     private fun allowOwner() {
-        `when`(records.findOwnedForUpdate(10, 1)).thenReturn(RunningRecord(id = 10))
+        `when`(records.findOwnedForUpdate(10, 1)).thenReturn(RunningRecord(id = 10, user = com.example.running.domain.user.entity.User(1), startDatetime = timestamp))
         `when`(items.findAllByRunningRecord_IdOrderByOrderIndexAsc(10)).thenAnswer { stored.toList() }
         doAnswer { call -> stored.addAll(call.getArgument<List<RunningRecordItem>>(0)); null }
             .`when`(items).saveInBatch(anyList())
@@ -62,6 +62,20 @@ class RunningRecordItemServiceTest {
             timestamp.plusSeconds(5).withOffsetSameInstant(java.time.ZoneOffset.ofHours(9)).plusNanos(123000000),
         )))
         assertEquals(1, stored.size)
+    }
+
+    @Test
+    fun `later item upload cannot change accepted summary or frozen reward values`() {
+        val accepted = RunningRecord(id = 10, user = com.example.running.domain.user.entity.User(1),
+            distance = 1500, durationSec = 600, startDatetime = timestamp, endDatetime = timestamp.plusSeconds(600))
+        accepted.finishAcceptance(com.example.running.domain.running.enums.RunningAcceptanceStatus.ACCEPTED, true)
+        accepted.pointAwarded = true
+        `when`(records.findOwnedForUpdate(10, 1)).thenReturn(accepted)
+        service.save(1, 10, listOf(item()))
+        assertEquals(1500, accepted.distance)
+        assertEquals(1500, accepted.leagueDistanceOverride)
+        assertEquals(timestamp.plusSeconds(600), accepted.originalEndDatetime)
+        assertEquals(true, accepted.pointAwarded)
     }
 
     @Test

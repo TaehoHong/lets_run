@@ -1,6 +1,7 @@
 package com.example.running.domain.running.entity
 
 import com.example.running.domain.common.entity.CreatedDatetime
+import com.example.running.domain.running.enums.RunningAcceptanceStatus
 import com.example.running.domain.running.enums.RunningRecordSource
 import com.example.running.domain.shoe.entity.Shoe
 import com.example.running.domain.user.entity.User
@@ -44,7 +45,7 @@ class RunningRecord(
 
     @ColumnDefault("1")
     @Column(name = "is_statistic_included", nullable = false)
-    val isStatisticIncluded: Boolean = true,
+    var isStatisticIncluded: Boolean = true,
 
     @ColumnDefault("0")
     @Column(name = "is_end", nullable = false)
@@ -64,9 +65,25 @@ class RunningRecord(
     @Column(name = "point_eligible", nullable = false)
     var pointEligible: Boolean = true,
 
+    @Column(name = "league_distance_override")
+    var leagueDistanceOverride: Int? = null,
+
+    @Column(name = "league_end_datetime_override", columnDefinition = "DATETIME")
+    var leagueEndDatetimeOverride: OffsetDateTime? = null,
+
     @ColumnDefault("0")
     @Column(name = "point_awarded", nullable = false)
     var pointAwarded: Boolean = false,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "acceptance_status", nullable = false, columnDefinition = "VARCHAR(20)")
+    var acceptanceStatus: RunningAcceptanceStatus = RunningAcceptanceStatus.PENDING,
+
+    @Column(name = "original_start_datetime", columnDefinition = "DATETIME(3)")
+    var originalStartDatetime: OffsetDateTime? = null,
+
+    @Column(name = "original_end_datetime", columnDefinition = "DATETIME(3)")
+    var originalEndDatetime: OffsetDateTime? = null,
 
     @Column(name = "start_datetime", nullable = false, columnDefinition = "DATETIME")
     var startDatetime: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
@@ -96,7 +113,6 @@ class RunningRecord(
                startDatetime: OffsetDateTime?,
                endDatetime: OffsetDateTime?
     ){
-        this.isEnd = true
         shoeId?.also { this.shoe = Shoe(id = it)  }
         distance?.also{ this.distance = it }
         durationSec?.also{ this.durationSec = it }
@@ -105,6 +121,32 @@ class RunningRecord(
         calorie?.also { this.calorie = it }
         startDatetime?.also { this.startDatetime = it }
         endDatetime?.also { this.endDatetime = it }
+    }
+
+    fun finishAcceptance(status: RunningAcceptanceStatus, eligibleForPoints: Boolean) {
+        check(acceptanceStatus == RunningAcceptanceStatus.PENDING)
+        require(status != RunningAcceptanceStatus.PENDING)
+        originalStartDatetime = startDatetime
+        originalEndDatetime = checkNotNull(endDatetime)
+        acceptanceStatus = status
+        isEnd = true
+        pointEligible = status == RunningAcceptanceStatus.ACCEPTED && eligibleForPoints
+        leagueDistanceOverride = if (status == RunningAcceptanceStatus.ACCEPTED) distance else 0
+        leagueEndDatetimeOverride = endDatetime
+        if (status == RunningAcceptanceStatus.DUPLICATE) isStatisticIncluded = false
+    }
+
+    fun markDuplicate() {
+        check(acceptanceStatus == RunningAcceptanceStatus.PENDING ||
+            acceptanceStatus == RunningAcceptanceStatus.PERSONAL_ONLY)
+        check(!pointAwarded)
+        if (originalStartDatetime == null) originalStartDatetime = startDatetime
+        if (originalEndDatetime == null) originalEndDatetime = endDatetime
+        acceptanceStatus = RunningAcceptanceStatus.DUPLICATE
+        isStatisticIncluded = false
+        pointEligible = false
+        leagueDistanceOverride = 0
+        if (leagueEndDatetimeOverride == null) leagueEndDatetimeOverride = endDatetime
     }
 
     fun updateImported(

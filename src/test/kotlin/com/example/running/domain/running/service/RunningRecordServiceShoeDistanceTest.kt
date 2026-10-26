@@ -22,13 +22,14 @@ class RunningRecordServiceShoeDistanceTest {
 
     private val runningRecordRepository = mock(RunningRecordRepository::class.java)
     private val shoeRepository = mock(ShoeRepository::class.java)
-    private val service = RunningRecordService(runningRecordRepository, ShoeService(shoeRepository))
+    private val service = RunningRecordService(runningRecordRepository, ShoeService(shoeRepository),
+        mock(com.example.running.domain.user.service.UserConfigurationService::class.java), RunningValidationService())
     private val record = RunningRecord(id = 101, user = User(id = 7), shoe = Shoe(id = 11))
     private val persistedDistances = mutableMapOf(11L to 2000, 12L to 1000)
 
     @BeforeEach
     fun setUp() {
-        `when`(runningRecordRepository.findByIdAndUserId(101, 7)).thenReturn(record)
+        `when`(runningRecordRepository.findOwnedForUpdate(101, 7)).thenReturn(record)
         // Repository boundaries are replaced; both service implementations run for real.
         doAnswer { invocation ->
             persistedDistances[invocation.getArgument<Long>(0)] = invocation.getArgument<Int>(1)
@@ -37,14 +38,33 @@ class RunningRecordServiceShoeDistanceTest {
     }
 
     @Test
-    fun `ending a record without a shoe id refreshes its linked shoe distance`() {
+    fun `local Garmin edits retain awarded points and freeze the original league contribution`() {
+        record.source = com.example.running.domain.running.enums.RunningRecordSource.GARMIN
+        record.distance = 1500
+        record.endDatetime = java.time.OffsetDateTime.parse("2026-10-01T12:00:00Z")
+        record.durationSec = 1800
+        record.startDatetime = record.endDatetime!!.minusMinutes(30)
+        record.finishAcceptance(com.example.running.domain.running.enums.RunningAcceptanceStatus.ACCEPTED, true)
+        record.pointAwarded = true
+        record.shoe = null
+        service.updateRecord(RunningRecordUpdateDto(userId = 7, runningRecordId = 101, distance = 9000,
+            endDatetime = java.time.OffsetDateTime.parse("2026-10-02T12:00:00Z")))
+        assertEquals(9000, record.distance)
+        assertEquals(1500, record.leagueDistanceOverride)
+        assertEquals(java.time.OffsetDateTime.parse("2026-10-01T12:00:00Z"), record.leagueEndDatetimeOverride)
+        assertTrue(record.pointAwarded)
+        org.junit.jupiter.api.Assertions.assertTrue(record.pointEligible)
+    }
+
+    @Test
+    fun `saving a draft refreshes its linked shoe distance without completing it`() {
         `when`(runningRecordRepository.findAllDistanceByShoeId(11)).thenReturn(listOf(2000, 5000))
 
         val updated = service.updateRecord(
             RunningRecordUpdateDto(userId = 7, runningRecordId = 101, distance = 5000)
         )
 
-        assertTrue(updated.isEnd)
+        org.junit.jupiter.api.Assertions.assertFalse(updated.isEnd)
         assertEquals(5000, updated.distance)
         assertEquals(11L, updated.shoe?.id)
         assertEquals(7000, persistedDistances[11L])
@@ -65,14 +85,14 @@ class RunningRecordServiceShoeDistanceTest {
     }
 
     @Test
-    fun `ending a record without a linked shoe leaves shoe distances unchanged`() {
+    fun `saving a draft without a linked shoe leaves shoe distances unchanged`() {
         record.shoe = null
 
         val updated = service.updateRecord(
             RunningRecordUpdateDto(userId = 7, runningRecordId = 101, distance = 5000)
         )
 
-        assertTrue(updated.isEnd)
+        org.junit.jupiter.api.Assertions.assertFalse(updated.isEnd)
         assertEquals(5000, updated.distance)
         assertNull(updated.shoe)
         assertEquals(mapOf(11L to 2000, 12L to 1000), persistedDistances)

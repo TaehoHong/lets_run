@@ -25,6 +25,10 @@ class AuthenticationFilter(
 
     private val log = KotlinLogging.logger{}
 
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean =
+        (request.method == "GET" && request.requestURI == "/api/v1/garmin/callback") ||
+        (request.method == "POST" && request.requestURI == "/api/v1/garmin/webhook")
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,

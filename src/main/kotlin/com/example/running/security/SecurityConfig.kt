@@ -38,6 +38,12 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/healthy-check", "/active-type").permitAll()
 
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/garmin/callback").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/garmin/webhook").permitAll()
+                authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/garmin/connection").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/garmin/authorization").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.DELETE, "/api/v1/garmin/connection").authenticated()
+
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                 authorizeHttpRequests.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
@@ -68,6 +74,7 @@ class SecurityConfig(
 
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/import-batch").authenticated()
+                authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/completed-records").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PUT, "/api/v1/running/*").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.PATCH, "/api/v1/running/*/shoe").authenticated()
                 authorizeHttpRequests.requestMatchers(HttpMethod.POST, "/api/v1/running/*/end").authenticated()

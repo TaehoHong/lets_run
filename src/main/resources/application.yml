@@ -58,6 +58,14 @@ oauth:
   apple:
     token_url: "https://appleid.apple.com/auth/token"
 
+garmin:
+  enabled: ${GARMIN_ENABLED:false}
+  client-id: ${GARMIN_CLIENT_ID:}
+  client-secret: ${GARMIN_CLIENT_SECRET:}
+  encryption-key: ${GARMIN_ENCRYPTION_KEY:}
+  webhook-token: ${GARMIN_WEBHOOK_TOKEN:}
+  redirect-uri: ${GARMIN_REDIRECT_URI:https://dev-api-run-taeho.com:12643/api/v1/garmin/callback}
+
 # AWS S3 Configuration
 cloud:
   aws:

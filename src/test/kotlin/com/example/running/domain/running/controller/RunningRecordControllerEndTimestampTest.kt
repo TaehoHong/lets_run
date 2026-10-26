@@ -18,6 +18,10 @@ import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.running.service.RunningEndService
 import com.example.running.domain.running.service.RunningRecordService
 import com.example.running.domain.running.service.RunningStartService
+import com.example.running.domain.running.service.RunningValidationService
+import com.example.running.domain.running.service.RunningAcceptanceService
+import com.example.running.domain.running.repository.RunningRecordItemRepository
+import com.example.running.domain.user.service.UserConfigurationService
 import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.repository.UserRepository
@@ -50,7 +54,9 @@ class RunningRecordControllerEndTimestampTest {
     private val record = RunningRecord(
         id = 77, user = User(id = 7), startDatetime = OffsetDateTime.parse("2025-01-05T14:30:00Z")
     )
-    private val recordService = RunningRecordService(repository, mock(ShoeService::class.java))
+    private val configurations = mock(UserConfigurationService::class.java)
+    private val validation = RunningValidationService()
+    private val recordService = RunningRecordService(repository, mock(ShoeService::class.java), configurations, validation)
     private val participantRepository = mock(LeagueParticipantRepository::class.java)
     private val sessionService = mock(LeagueSessionService::class.java)
     private val userLeagueInfoService = mock(UserLeagueInfoService::class.java)
@@ -67,11 +73,14 @@ class RunningRecordControllerEndTimestampTest {
     )
     private val controller = RunningRecordController(
         mock(RunningStartService::class.java),
-        RunningEndService(recordService, pointService, repository, leagueService, mock(NotificationService::class.java)),
-        recordService
+        RunningEndService(recordService, pointService, repository, configurations,
+            RunningAcceptanceService(repository, mock(RunningRecordItemRepository::class.java), configurations,
+                pointService, leagueService, mock(NotificationService::class.java), recordService, validation)),
+        recordService, validation
     )
     private val mapper = jacksonObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
     private val mvc = MockMvcBuilders.standaloneSetup(controller)
+        .setControllerAdvice(com.example.running.exception.ControllerAdvice())
         .setMessageConverters(MappingJackson2HttpMessageConverter(mapper))
         .build()
     private val request: Map<String, Number> = mapOf(
@@ -80,6 +89,7 @@ class RunningRecordControllerEndTimestampTest {
 
     @BeforeEach
     fun setUp() {
+        `when`(repository.findOwnedForUpdate(77, 7)).thenReturn(record)
         `when`(repository.findByIdAndUserId(77, 7)).thenReturn(record)
         `when`(pointService.getOrCreateByUserId(7)).thenReturn(UserPoint(userId = 7, point = 50))
         `when`(userRepository.findById(7)).thenReturn(Optional.of(record.user))
@@ -95,6 +105,36 @@ class RunningRecordControllerEndTimestampTest {
     @AfterEach
     fun tearDown() {
         SecurityContextHolder.clearContext()
+    }
+
+    @Test
+    fun `out of range end timestamp is a safe client error before any record write`() {
+        mvc.perform(post("/api/v1/running/77/end").contentType(MediaType.APPLICATION_JSON)
+            .content(mapper.writeValueAsString(request + ("endTimestamp" to Long.MAX_VALUE))))
+            .andExpect(status().isBadRequest)
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.extra.code").value("RUNNING_INVALID_METRICS"))
+        org.mockito.Mockito.verifyNoInteractions(repository)
+    }
+
+    @Test
+    fun `ingress time bounds completion and a retry cannot top up accepted distance`() {
+        org.mockito.Mockito.`when`(repository.markPointAwardedIfEligible(7, 77)).thenReturn(true)
+        endRecord(request + ("endTimestamp" to 1736091000L))
+        endRecord(request + ("distance" to 6000) + ("endTimestamp" to 1736091000L))
+        assertEquals(6000, record.distance)
+        assertEquals(5000, record.leagueDistanceOverride)
+        assertEquals(1, org.mockito.Mockito.mockingDetails(pointService).invocations.count { it.method.name == "updatePoint" })
+    }
+
+    @Test
+    fun `explicit ingress time rejects future completion before metrics mutate`() {
+        mvc.perform(post("/api/v1/running/77/end").contentType(MediaType.APPLICATION_JSON)
+            .requestAttr("running.receivedAt", java.time.Instant.ofEpochSecond(1736090999L))
+            .content(mapper.writeValueAsString(request + ("endTimestamp" to 1736091000L))))
+            .andExpect(status().isBadRequest)
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.extra.code").value("RUNNING_FUTURE_END_TIME"))
+        assertFalse(record.isEnd)
+        assertEquals(0, record.distance)
     }
 
     @Test

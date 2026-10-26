@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.RequestAttribute
+import java.time.Instant
 
 @RequestMapping("/api/v1/running")
 @RestController
@@ -16,9 +18,10 @@ class RunningImportController(
 ) {
 
     @PostMapping("/import-batch")
-    fun importBatch(@RequestBody request: ImportRunningBatchRequest): ImportRunningBatchResponse {
+    fun importBatch(@RequestBody request: ImportRunningBatchRequest,
+                    @RequestAttribute(name = "running.receivedAt", required = false) receivedAt: Instant? = null): ImportRunningBatchResponse {
         return authenticateWithUser { userId ->
-            runningImportService.importBatch(userId, request)
+            runningImportService.importBatch(userId, request, receivedAt ?: Instant.now())
         }
     }
 }

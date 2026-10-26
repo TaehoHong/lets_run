@@ -91,7 +91,7 @@ class NotificationDatabaseTest {
     @Test
     fun `first state after rollout includes a newer existing completed run`() {
         val latest = anchor.plusSeconds(3600)
-        jdbc.update("INSERT INTO running_record VALUES (7, ?, 1, 1)", NotificationRepository.utc(latest))
+        jdbc.update("INSERT INTO running_record (user_id, end_datetime, is_end, is_statistic_included) VALUES (7, ?, 1, 1)", NotificationRepository.utc(latest))
         repository.recordCompletion(7, anchor)
         assertEquals(latest, repository.reminderAnchor(7))
     }
