@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.util.Optional
+import java.time.OffsetDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -96,6 +97,32 @@ class UserConfigurationLanguageTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.language").value("ja"))
             .andExpect(jsonPath("$.userId").value(7))
+    }
+
+    @Test
+    fun `client cannot override server Health baselines and responses retain the compatibility cursor`() {
+        val enabledAt = OffsetDateTime.parse("2026-10-01T00:00:00Z")
+        configuration.healthImportFirstEnabledAt = enabledAt
+        configuration.healthImportRewardCutoffAt = enabledAt
+        configuration.healthImportLastSyncedAt = enabledAt.plusDays(1)
+
+        update("""{"healthImportEnabled":true,"healthImportFirstEnabledTimestamp":1,"healthImportRewardCutoffTimestamp":1}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.healthImportFirstEnabledTimestamp").value(enabledAt.toEpochSecond()))
+            .andExpect(jsonPath("$.healthImportRewardCutoffTimestamp").value(enabledAt.toEpochSecond()))
+            .andExpect(jsonPath("$.healthImportLastSyncedTimestamp").value(enabledAt.plusDays(1).toEpochSecond()))
+    }
+
+    @Test
+    fun `legacy activation remains unknown while the saved cursor becomes the fixed cutoff`() {
+        val legacyCursor = OffsetDateTime.parse("2026-10-01T00:00:00Z")
+        configuration.healthImportLastSyncedAt = legacyCursor
+
+        update("""{"healthImportEnabled":true}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.healthImportFirstEnabledTimestamp").isEmpty)
+            .andExpect(jsonPath("$.healthImportRewardCutoffTimestamp").value(legacyCursor.toEpochSecond()))
+        assertNull(configuration.healthImportFirstEnabledAt)
     }
 
     private fun update(body: String) = mvc.perform(

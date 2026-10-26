@@ -46,6 +46,7 @@ class ImportRunningBatchResponse(
     val awardedPoint: Int,
     val leagueDistanceChanged: Boolean = false,
     val personalOnlyCount: Int = 0,
+    val processed: Boolean = true,
 )
 
 /** Prevent Jackson string coercion from accepting numeric or boolean provider metadata. */

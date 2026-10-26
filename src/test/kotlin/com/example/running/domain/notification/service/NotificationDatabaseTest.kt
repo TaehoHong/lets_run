@@ -47,9 +47,23 @@ class NotificationDatabaseTest {
         val source = source(database)
         jdbc = JdbcTemplate(source)
         jdbc.execute("CREATE TABLE user (id BIGINT UNSIGNED PRIMARY KEY, authority_type CHAR(1) NOT NULL DEFAULT 'U', is_enabled TINYINT(1) NOT NULL DEFAULT 1, is_deleted TINYINT(1) NOT NULL DEFAULT 0)")
-        jdbc.execute("CREATE TABLE user_configuration (user_id BIGINT UNSIGNED PRIMARY KEY, language VARCHAR(10) NOT NULL DEFAULT 'system')")
+        jdbc.execute("""CREATE TABLE user_configuration (
+            user_id BIGINT UNSIGNED PRIMARY KEY,
+            language VARCHAR(10) NOT NULL DEFAULT 'system',
+            health_import_enabled TINYINT(1) NOT NULL DEFAULT 0,
+            health_import_last_synced_at DATETIME NULL
+        )""")
         jdbc.execute("CREATE TABLE league_participant (id BIGINT UNSIGNED PRIMARY KEY)")
-        jdbc.execute("CREATE TABLE running_record (user_id BIGINT UNSIGNED, end_datetime DATETIME, is_end TINYINT(1), is_statistic_included TINYINT(1))")
+        jdbc.execute("""CREATE TABLE running_record (
+            user_id BIGINT UNSIGNED,
+            start_datetime DATETIME NULL,
+            end_datetime DATETIME,
+            distance INT NOT NULL DEFAULT 0,
+            is_end TINYINT(1),
+            is_statistic_included TINYINT(1),
+            point_awarded TINYINT(1) NOT NULL DEFAULT 0,
+            point_eligible TINYINT(1) NOT NULL DEFAULT 0
+        )""")
         jdbc.update("INSERT INTO user (id, authority_type) VALUES (7, 'U'), (8, 'A'), (9, 'U')")
         jdbc.update("INSERT INTO user_configuration (user_id, language) VALUES (7, 'ja'), (9, 'system')")
         Flyway.configure().dataSource(source).baselineOnMigrate(true).baselineVersion("1.5.0")

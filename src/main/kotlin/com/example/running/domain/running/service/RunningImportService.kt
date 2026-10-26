@@ -55,16 +55,19 @@ class RunningImportService(
                 duplicateCount = 0,
                 awardedPoint = 0,
                 leagueDistanceChanged = false,
+                processed = false,
             )
         }
 
-        val previousLastSyncedAt = if (source == RunningRecordSource.GARMIN) connectedAt else configuration.healthImportLastSyncedAt
+        val previousLastSyncedAt = configuration.healthImportLastSyncedAt
+        val rewardCutoffAt = if (source == RunningRecordSource.GARMIN) connectedAt else
+            configuration.ensureHealthImportRewardCutoff(receivedAt.atOffset(ZoneOffset.UTC))
         val requestMaxEndDatetime = request.records
             .map { validation.timestamp(it.endTimestamp) }
             .maxOrNull()
 
         val results = request.records.map { recordRequest ->
-            importOne(userId, recordRequest, previousLastSyncedAt, source, manual, receivedAt)
+            importOne(userId, recordRequest, rewardCutoffAt, source, manual, receivedAt)
         }
         if (source == RunningRecordSource.HEALTH) {
             resolveNextLastSyncedAt(userId, previousLastSyncedAt, requestMaxEndDatetime)
@@ -94,7 +97,7 @@ class RunningImportService(
     private fun importOne(
         userId: Long,
         request: ImportRunningRecordRequest,
-        previousLastSyncedAt: OffsetDateTime?,
+        rewardCutoffAt: OffsetDateTime?,
         source: RunningRecordSource,
         manual: Boolean,
         receivedAt: Instant,
@@ -146,7 +149,7 @@ class RunningImportService(
         replaceItems(savedRecord.id, request)
         val recorded = if (source == RunningRecordSource.GARMIN) !manual else request.recordingMethod == "RECORDED"
         val result = acceptance.accept(userId, savedRecord, recorded,
-            isPointEligibleForNewImport(previousLastSyncedAt, endDatetime), receivedAt)
+            isPointEligibleForNewImport(rewardCutoffAt, endDatetime), receivedAt)
 
         return ImportResult(
             status = if (savedRecord.acceptanceStatus == RunningAcceptanceStatus.DUPLICATE) ImportRunningRecordStatus.DUPLICATE else ImportRunningRecordStatus.CREATED,
@@ -178,10 +181,10 @@ class RunningImportService(
     }
 
     private fun isPointEligibleForNewImport(
-        previousLastSyncedAt: OffsetDateTime?,
+        rewardCutoffAt: OffsetDateTime?,
         endDatetime: OffsetDateTime
     ): Boolean {
-        return previousLastSyncedAt != null && endDatetime.isAfter(previousLastSyncedAt)
+        return rewardCutoffAt != null && endDatetime.isAfter(rewardCutoffAt)
     }
 
     private fun RunningRecord.updateImported(

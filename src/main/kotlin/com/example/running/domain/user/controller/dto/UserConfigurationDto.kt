@@ -8,12 +8,16 @@ class UserConfigurationResponse(
     val healthImportEnabled: Boolean,
     val healthImportLastSyncedTimestamp: Long?,
     val language: String,
+    val healthImportFirstEnabledTimestamp: Long? = null,
+    val healthImportRewardCutoffTimestamp: Long? = null,
 ) {
     constructor(configuration: UserConfiguration) : this(
         userId = configuration.userId,
         healthImportEnabled = configuration.healthImportEnabled,
         healthImportLastSyncedTimestamp = configuration.healthImportLastSyncedAt?.toEpochSecond(),
         language = configuration.language,
+        healthImportFirstEnabledTimestamp = configuration.healthImportFirstEnabledAt?.toEpochSecond(),
+        healthImportRewardCutoffTimestamp = configuration.healthImportRewardCutoffAt?.toEpochSecond(),
     )
 }
 

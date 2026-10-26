@@ -77,6 +77,11 @@ class GarminDatabaseTest {
         val source = source(database)
         jdbc = JdbcTemplate(source)
         jdbc.execute("CREATE TABLE user (id BIGINT UNSIGNED PRIMARY KEY)")
+        jdbc.execute("""CREATE TABLE user_configuration (
+            user_id BIGINT UNSIGNED PRIMARY KEY,
+            health_import_enabled TINYINT(1) NOT NULL DEFAULT 0,
+            health_import_last_synced_at DATETIME NULL
+        )""")
         jdbc.execute("""CREATE TABLE running_record (
             id BIGINT UNSIGNED PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL DEFAULT 7,
@@ -96,6 +101,31 @@ class GarminDatabaseTest {
 
     @AfterEach
     fun cleanup() { if (::admin.isInitialized) admin.execute("DROP DATABASE $database") }
+
+    @Test
+    fun `Health baseline migration preserves legacy cutoffs and leaves unknown first activation null`() {
+        jdbc.execute("""ALTER TABLE user_configuration
+            DROP COLUMN health_import_first_enabled_at,
+            DROP COLUMN health_import_reward_cutoff_at""")
+        jdbc.update("""INSERT INTO user_configuration (user_id, health_import_enabled, health_import_last_synced_at) VALUES
+            (7, 1, '2026-10-01 12:00:00'),
+            (8, 0, '2026-10-02 12:00:00'),
+            (9, 1, NULL),
+            (10, 0, NULL)""")
+        val before = jdbc.queryForObject("SELECT DATE_FORMAT(UTC_TIMESTAMP(3), '%Y-%m-%d %H:%i:%s.%f')", String::class.java)!!
+
+        val migration = Files.readString(Path.of("src/main/resources/db/migration/V1.9.0__separate_health_import_reward_cutoff.sql"))
+        migration.split(';').filter { it.isNotBlank() }.forEach(jdbc::execute)
+
+        val after = jdbc.queryForObject("SELECT DATE_FORMAT(UTC_TIMESTAMP(3), '%Y-%m-%d %H:%i:%s.%f')", String::class.java)!!
+        assertEquals(listOf("2026-10-01 12:00:00", "2026-10-02 12:00:00"), jdbc.queryForList(
+            "SELECT DATE_FORMAT(health_import_reward_cutoff_at, '%Y-%m-%d %H:%i:%s') FROM user_configuration WHERE user_id IN (7, 8) ORDER BY user_id",
+            String::class.java))
+        assertEquals(1, jdbc.queryForObject("""SELECT COUNT(*) FROM user_configuration
+            WHERE user_id = 9 AND health_import_reward_cutoff_at BETWEEN ? AND ?""", Int::class.java, before, after))
+        assertNull(jdbc.queryForObject("SELECT health_import_reward_cutoff_at FROM user_configuration WHERE user_id = 10", String::class.java))
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_configuration WHERE health_import_first_enabled_at IS NOT NULL", Int::class.java))
+    }
 
     @Test
     fun `acceptance migration backfills completed history without moving frozen league values or granted points`() {
