@@ -142,13 +142,18 @@ class NotificationDatabaseTest {
         val device = repository.bindDevice(7, UUID.randomUUID().toString(), "ExpoPushToken[test]", "IOS", repository.languageId("ko")!!)
         repository.enqueue(id, device, now)
         val candidate = queue.candidates(now).single()
-        assertTrue(queue.claim(candidate, "first", now))
-        assertFalse(queue.claim(candidate, "other", now))
+        queue.claim(listOf(candidate), "first", now)
+        queue.claim(listOf(candidate), "other", now)
+        assertEquals("first", jdbc.queryForObject("SELECT lease_token FROM notification_push WHERE id = ?", String::class.java, candidate.id))
         queue.recoverExpired(Instant.now())
         val replacement = queue.candidates(Instant.now()).single()
-        assertTrue(queue.claim(replacement, "replacement", Instant.now()))
-        assertFalse(queue.finish(candidate.id, "first", "PROVIDER_ACCEPTED", Instant.now()))
-        assertTrue(queue.finish(candidate.id, "replacement", "FAILED", Instant.now(), "TEST"))
+        queue.claim(listOf(replacement), "replacement", Instant.now())
+        queue.finish(listOf(PushOutcome(candidate.id, "first", "FAILED", Instant.now(), "DeviceNotRegistered")))
+        assertEquals("SENDING", jdbc.queryForObject("SELECT status FROM notification_push WHERE id = ?", String::class.java, candidate.id))
+        assertEquals(listOf(device), repository.devices(7))
+        queue.finish(listOf(PushOutcome(candidate.id, "replacement", "FAILED", Instant.now(), "DeviceNotRegistered")))
+        assertEquals("FAILED", jdbc.queryForObject("SELECT status FROM notification_push WHERE id = ?", String::class.java, candidate.id))
+        assertTrue(repository.devices(7).isEmpty())
     }
 
     @Test

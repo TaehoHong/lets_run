@@ -44,7 +44,7 @@ class NotificationScheduler(
     fun pushes() {
         val now = Instant.now()
         queue.recoverExpired(now)
-        queue.candidates(now).forEach { candidate -> safely("push") { worker.process(candidate) } }
+        safely("push") { worker.process(queue.candidates(now), now) }
     }
 
     @Scheduled(fixedDelay = 60000, scheduler = "notificationTaskScheduler")

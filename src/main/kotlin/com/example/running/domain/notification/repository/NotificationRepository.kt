@@ -203,15 +203,9 @@ class NotificationRepository(private val jdbc: JdbcTemplate) {
 
     fun inbox(userId: Long, language: String, cursor: Long?, size: Int, now: Instant, id: Long? = null, type: NotificationType? = null): List<InboxNotification> = jdbc.query("""
         SELECT n.id, n.type, n.league_participant_id, n.read_datetime, n.created_datetime,
-            COALESCE(nt.title, ft.title, pt.title, pf.title) AS title,
-            COALESCE(nt.body, ft.body, pt.body, pf.body) AS body
+            $contentColumns
         FROM notification n
-        LEFT JOIN language lang ON lang.code = ?
-        JOIN language fallback ON fallback.code = 'ko'
-        LEFT JOIN notification_translation nt ON nt.notification_id = n.id AND nt.language_id = lang.id
-        LEFT JOIN notification_translation ft ON ft.notification_id = n.id AND ft.language_id = fallback.id
-        LEFT JOIN notice_translation pt ON pt.notice_id = n.notice_id AND pt.language_id = lang.id
-        LEFT JOIN notice_translation pf ON pf.notice_id = n.notice_id AND pf.language_id = fallback.id
+        ${contentJoins("?")}
         WHERE n.user_id = ? AND n.expired_datetime > ?
             ${if (cursor != null) "AND n.id < ?" else ""} ${if (id != null) "AND n.id = ?" else ""}
             ${if (type != null) "AND n.type = ?" else ""}
@@ -220,6 +214,41 @@ class NotificationRepository(private val jdbc: JdbcTemplate) {
         rs.getString("title"), rs.getString("body"), rs.getObject("league_participant_id", java.lang.Long::class.java)?.toLong(),
         instant(rs, "read_datetime"), instant(rs, "created_datetime")!!) },
         *listOfNotNull<Any>(language, userId, utc(now), cursor, id, type?.name, size).toTypedArray())
+
+    fun pushContent(jobs: List<PushJob>, now: Instant): Map<Long, NotificationText> {
+        if (jobs.isEmpty()) return emptyMap()
+        require(jobs.size <= 100)
+        val rows = jobs.joinToString(" UNION ALL ") {
+            "SELECT ? AS push_id, ? AS notification_id, ? AS user_id, ? AS language"
+        }
+        return jdbc.query("""
+            SELECT requested.push_id, requested.language, $contentColumns
+            FROM ($rows) requested JOIN notification n
+                ON n.id = requested.notification_id AND n.user_id = requested.user_id
+            ${contentJoins("requested.language")}
+            WHERE n.expired_datetime > ?
+        """.trimIndent(), { rs, _ ->
+            val title = rs.getString("title")
+            val body = rs.getString("body")
+            if (title == null || body == null) null else rs.getLong("push_id") to
+                NotificationText(rs.getString("language"), title, body)
+        }, *(jobs.flatMap { listOf(it.id, it.notificationId, it.userId, it.language) } + utc(now)).toTypedArray<Any?>())
+            .filterNotNull().toMap()
+    }
+
+    private val contentColumns = """
+        COALESCE(nt.title, ft.title, pt.title, pf.title) AS title,
+        COALESCE(nt.body, ft.body, pt.body, pf.body) AS body
+    """.trimIndent()
+
+    private fun contentJoins(language: String) = """
+        LEFT JOIN language lang ON lang.code = $language
+        JOIN language fallback ON fallback.code = 'ko'
+        LEFT JOIN notification_translation nt ON nt.notification_id = n.id AND nt.language_id = lang.id
+        LEFT JOIN notification_translation ft ON ft.notification_id = n.id AND ft.language_id = fallback.id
+        LEFT JOIN notice_translation pt ON pt.notice_id = n.notice_id AND pt.language_id = lang.id
+        LEFT JOIN notice_translation pf ON pf.notice_id = n.notice_id AND pf.language_id = fallback.id
+    """.trimIndent()
 
     fun markRead(userId: Long, id: Long, now: Instant) {
         jdbc.update("""

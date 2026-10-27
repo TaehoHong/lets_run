@@ -6,125 +6,117 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 import java.time.Instant
+import kotlin.test.*
 
 class NotificationPushWorkerTest {
-    private fun <T> equal(value: T): T { eq(value); return value }
     private fun anyInstant(): Instant = any(Instant::class.java) ?: Instant.EPOCH
     private val queue = mock(NotificationPushRepository::class.java)
     private val repository = mock(NotificationRepository::class.java)
     private val provider = mock(ExpoPushClient::class.java)
     private val worker = NotificationPushWorker(queue, repository, provider)
-    private val candidate = PushCandidate(1, "PENDING")
+    private val candidates = listOf(PushCandidate(1, "PENDING"))
     private val daytime = Instant.parse("2026-10-13T12:00:00Z")
     private val job = PushJob(1, 2, 7, 3, 4, "RUNNING_REMINDER:0:48", NotificationType.RUNNING_REMINDER,
-        "ExpoPushToken[test]", "ko", null, 0, Instant.now(), true)
+        "ExpoPushToken[test]", "ko", null, 0, Instant.now(), true,
+        NotificationConfiguration(pushEnabled = true, timezone = "UTC"), Instant.EPOCH)
+    private var finished = emptyList<PushOutcome>()
 
     @BeforeEach
     fun setup() {
-        `when`(queue.claim(equal(candidate), anyString(), anyInstant())).thenReturn(true)
-        `when`(queue.claimed(equal(1L), anyString(), anyInstant())).thenReturn(job)
-        `when`(repository.configuration(7)).thenReturn(NotificationConfiguration(pushEnabled = true, timezone = "UTC"))
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(listOf(job))
+        `when`(queue.beginDelivery(anyList(), anyString(), anyString())).thenReturn(setOf(1L))
+        doAnswer { call -> finished = call.getArgument(0); null }.`when`(queue).finish(anyList())
     }
 
     @Test
     fun `claim loser never contacts provider`() {
-        `when`(queue.claim(equal(candidate), anyString(), anyInstant())).thenReturn(false)
-        worker.process(candidate)
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(emptyList())
+        worker.process(candidates)
         verifyNoInteractions(provider, repository)
     }
 
     @Test
     fun `new completed run cancels old queued reminder`() {
-        `when`(repository.reminderAnchor(7)).thenReturn(Instant.now())
-        worker.process(candidate)
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(listOf(job.copy(anchor = Instant.now())))
+        worker.process(candidates)
         verifyNoInteractions(provider)
-        verify(queue).finish(equal(1L), anyString(), equal("CANCELLED"), anyInstant(), isNull(), isNull())
-        verify(queue, never()).beginSend(anyLong(), anyString(), any())
+        assertEquals("CANCELLED", finished.single().status)
+        verify(queue, never()).beginDelivery(anyList(), anyString(), anyString())
     }
 
     @Test
     fun `rebound device cancels queued push without using a send attempt`() {
-        `when`(queue.claimed(equal(1L), anyString(), anyInstant())).thenReturn(job.copy(validBinding = false, type = NotificationType.NOTICE))
-        worker.process(candidate)
+        `when`(queue.claimed(anyList(), anyString(), anyInstant()))
+            .thenReturn(listOf(job.copy(validBinding = false, type = NotificationType.NOTICE)))
+        worker.process(candidates)
         verifyNoInteractions(provider)
-        verify(queue, never()).beginSend(anyLong(), anyString(), any())
+        verify(queue, never()).beginDelivery(anyList(), anyString(), anyString())
     }
 
     @Test
     fun `receipt acceptance is recorded without resending`() {
-        val receiptJob = job.copy(ticketId = "ticket")
-        `when`(queue.claimed(equal(1L), anyString(), anyInstant())).thenReturn(receiptJob)
-        `when`(provider.receipt("ticket")).thenReturn(PushProviderResult())
-        worker.process(candidate)
-        verify(queue).finish(equal(1L), anyString(), equal("PROVIDER_ACCEPTED"), anyInstant(), isNull(), isNull())
-        verify(provider, never()).send(anyString(), anyString(), anyString(), anyLong())
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(listOf(job.copy(ticketId = "ticket")))
+        `when`(provider.receipts(listOf("ticket"))).thenReturn(mapOf("ticket" to PushProviderResult()))
+        worker.process(candidates)
+        assertEquals("PROVIDER_ACCEPTED", finished.single().status)
+        verify(provider, never()).send(anyList())
     }
 
     @Test
     fun `lost lease before send never contacts provider`() {
         noticeJob()
-        `when`(queue.beginSend(equal(1L), anyString(), any())).thenReturn(false)
-        worker.process(candidate, daytime)
+        `when`(queue.beginDelivery(anyList(), anyString(), anyString())).thenReturn(emptySet())
+        worker.process(candidates, daytime)
         verifyNoInteractions(provider)
     }
 
     @Test
     fun `transient provider failure retries before fifth actual send`() {
         noticeJob(attempts = 3)
-        `when`(provider.send(anyString(), anyString(), anyString(), anyLong()))
-            .thenReturn(PushProviderResult(error = "PROVIDER_UNAVAILABLE"))
-        worker.process(candidate, daytime)
-        verify(provider).send("ExpoPushToken[test]", "Notice", "Body", 2L)
-        verify(queue).finish(equal(1L), anyString(), equal("PENDING"),
-            equal(Instant.parse("2026-10-13T12:04:00Z")), equal("PROVIDER_UNAVAILABLE"), isNull())
+        `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(error = "PROVIDER_UNAVAILABLE")))
+        val before = Instant.now()
+        worker.process(candidates, daytime)
+        verify(provider).send(listOf(PushMessage("ExpoPushToken[test]", "Notice", "Body", 2L)))
+        assertEquals("PENDING", finished.single().status)
+        assertEquals("PROVIDER_UNAVAILABLE", finished.single().error)
+        assertTrue(finished.single().next >= before.plusSeconds(240))
+        assertTrue(finished.single().next <= Instant.now().plusSeconds(240))
     }
 
     @Test
     fun `fifth actual send failure is terminal`() {
         noticeJob(attempts = 4)
-        `when`(provider.send(anyString(), anyString(), anyString(), anyLong()))
-            .thenReturn(PushProviderResult(error = "PROVIDER_UNAVAILABLE"))
-        worker.process(candidate, daytime)
-        verify(provider).send("ExpoPushToken[test]", "Notice", "Body", 2L)
-        verify(queue).finish(equal(1L), anyString(), equal("FAILED"), equal(daytime),
-            equal("PROVIDER_UNAVAILABLE"), isNull())
+        `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(error = "PROVIDER_UNAVAILABLE")))
+        worker.process(candidates, daytime)
+        verify(provider).send(listOf(PushMessage("ExpoPushToken[test]", "Notice", "Body", 2L)))
+        assertEquals("FAILED", finished.single().status)
+        assertEquals("PROVIDER_UNAVAILABLE", finished.single().error)
     }
 
     @Test
     fun `exhausted attempts never cause a sixth send`() {
         noticeJob(attempts = 5)
-        worker.process(candidate, daytime)
+        worker.process(candidates, daytime)
         verifyNoInteractions(provider)
-        verify(queue, never()).beginSend(anyLong(), anyString(), any())
-        verify(queue).finish(equal(1L), anyString(), equal("FAILED"), equal(daytime),
-            equal("ATTEMPTS_EXHAUSTED"), isNull())
+        verify(queue, never()).beginDelivery(anyList(), anyString(), anyString())
+        assertEquals("FAILED", finished.single().status)
+        assertEquals("ATTEMPTS_EXHAUSTED", finished.single().error)
     }
 
     @Test
-    fun `unregistered device is disabled only after valid lease finishes failure`() {
+    fun `unregistered response is delegated to atomic queue finish`() {
         noticeJob()
-        `when`(provider.send(anyString(), anyString(), anyString(), anyLong()))
-            .thenReturn(PushProviderResult(error = "DeviceNotRegistered"))
-        `when`(queue.finish(equal(1L), anyString(), equal("FAILED"), equal(daytime),
-            equal("DeviceNotRegistered"), isNull())).thenReturn(true)
-        worker.process(candidate, daytime)
-        verify(repository).disableDevice(3L, 4L)
-    }
-
-    @Test
-    fun `expired worker cannot disable device after unregistered response`() {
-        noticeJob()
-        `when`(provider.send(anyString(), anyString(), anyString(), anyLong()))
-            .thenReturn(PushProviderResult(error = "DeviceNotRegistered"))
-        worker.process(candidate, daytime)
+        `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(error = "DeviceNotRegistered")))
+        worker.process(candidates, daytime)
+        assertEquals("FAILED", finished.single().status)
+        assertEquals("DeviceNotRegistered", finished.single().error)
         verify(repository, never()).disableDevice(anyLong(), anyLong())
     }
 
     private fun noticeJob(attempts: Int = 0) {
-        `when`(queue.claimed(equal(1L), anyString(), anyInstant()))
-            .thenReturn(job.copy(type = NotificationType.NOTICE, attemptCount = attempts))
-        `when`(repository.inbox(7L, "ko", null, 1, daytime, 2L))
-            .thenReturn(listOf(InboxNotification(2L, NotificationType.NOTICE, "Notice", "Body", null, null, daytime)))
-        `when`(queue.beginSend(equal(1L), anyString(), any())).thenReturn(true)
+        `when`(queue.claimed(anyList(), anyString(), anyInstant()))
+            .thenReturn(listOf(job.copy(type = NotificationType.NOTICE, attemptCount = attempts)))
+        `when`(repository.pushContent(anyList(), anyInstant()))
+            .thenReturn(mapOf(1L to NotificationText("ko", "Notice", "Body")))
     }
 }
