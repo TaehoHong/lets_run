@@ -7,6 +7,8 @@ import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.point.service.dto.PointUsageDto
 import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.enums.RunningAcceptanceStatus
+import com.example.running.domain.running.enums.RunningPointExclusionReason
+import com.example.running.domain.running.enums.RunningRecordingMethod
 import com.example.running.domain.running.repository.RunningRecordItemRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.service.UserConfigurationService
@@ -49,14 +51,23 @@ class RunningAcceptanceService(
                 candidateStart.isBefore(end) && candidateEnd.isAfter(record.startDatetime)
             } == true
         }
+        if (record.recordingMethod == null) {
+            record.recordingMethod = if (recorded) RunningRecordingMethod.RECORDED else RunningRecordingMethod.UNKNOWN
+        }
         if (overlaps.any { it.acceptanceStatus == RunningAcceptanceStatus.ACCEPTED }) {
-            record.finishAcceptance(RunningAcceptanceStatus.DUPLICATE, false)
+            record.finishAcceptance(RunningAcceptanceStatus.DUPLICATE, false, RunningPointExclusionReason.OVERLAPPING_ACTIVITY)
             records.flush()
             recordService.refreshShoeTotals(listOf(record))
             return Result()
         }
         val status = if (recorded) RunningAcceptanceStatus.ACCEPTED else RunningAcceptanceStatus.PERSONAL_ONLY
-        record.finishAcceptance(status, eligibleForPoints)
+        val pointExclusionReason = when {
+            !recorded && record.recordingMethod == RunningRecordingMethod.MANUAL -> RunningPointExclusionReason.MANUAL_ENTRY
+            !recorded -> RunningPointExclusionReason.RECORDING_METHOD_UNKNOWN
+            !eligibleForPoints -> RunningPointExclusionReason.BEFORE_POINT_CUTOFF
+            else -> null
+        }
+        record.finishAcceptance(status, eligibleForPoints, pointExclusionReason)
         val replaced = if (recorded) overlaps.filter { it.acceptanceStatus == RunningAcceptanceStatus.PERSONAL_ONLY } else emptyList()
         replaced.forEach { it.markDuplicate() }
         records.flush()

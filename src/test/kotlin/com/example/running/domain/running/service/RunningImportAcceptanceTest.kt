@@ -81,6 +81,10 @@ class RunningImportAcceptanceTest {
         assertThrows(com.fasterxml.jackson.databind.JsonMappingException::class.java) {
             mapper.readValue(json, ImportRunningRecordRequest::class.java)
         }
+        val invalidAppName = """{"externalId":"id","distance":1,"durationSec":1,"startTimestamp":1,"endTimestamp":2,"sourceAppName":12}"""
+        assertThrows(com.fasterxml.jackson.databind.JsonMappingException::class.java) {
+            mapper.readValue(invalidAppName, ImportRunningRecordRequest::class.java)
+        }
         assertThrows(RunningValidationException::class.java) {
             service.importBatch(7, ImportRunningBatchRequest(listOf(request("DEVICE"))), start.plusHours(1).toInstant())
         }
@@ -89,6 +93,12 @@ class RunningImportAcceptanceTest {
             sourceBundleId = "a".repeat(256))
         assertThrows(RunningValidationException::class.java) {
             service.importBatch(7, ImportRunningBatchRequest(listOf(oversizedMetadata)), start.plusHours(1).toInstant())
+        }
+        val oversizedAppName = ImportRunningRecordRequest("id", 2000, 600,
+            startTimestamp = start.toEpochSecond(), endTimestamp = start.plusMinutes(10).toEpochSecond(),
+            sourceAppName = "a".repeat(256))
+        assertThrows(RunningValidationException::class.java) {
+            service.importBatch(7, ImportRunningBatchRequest(listOf(oversizedAppName)), start.plusHours(1).toInstant())
         }
         verifyNoInteractions(records, configuration)
     }

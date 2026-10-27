@@ -3,6 +3,8 @@ package com.example.running.domain.running.entity
 import com.example.running.domain.common.entity.CreatedDatetime
 import com.example.running.domain.running.enums.RunningAcceptanceStatus
 import com.example.running.domain.running.enums.RunningRecordSource
+import com.example.running.domain.running.enums.RunningRecordingMethod
+import com.example.running.domain.running.enums.RunningPointExclusionReason
 import com.example.running.domain.shoe.entity.Shoe
 import com.example.running.domain.user.entity.User
 import jakarta.persistence.*
@@ -89,7 +91,21 @@ class RunningRecord(
     var startDatetime: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
 
     @Column(name = "end_datetime", columnDefinition = "DATETIME")
-    var endDatetime: OffsetDateTime? = null
+    var endDatetime: OffsetDateTime? = null,
+
+    @Column(name = "source_app_id", length = 255)
+    var sourceAppId: String? = null,
+
+    @Column(name = "source_app_name", length = 255)
+    var sourceAppName: String? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recording_method", columnDefinition = "VARCHAR(16)")
+    var recordingMethod: RunningRecordingMethod? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "point_exclusion_reason", columnDefinition = "VARCHAR(40)")
+    var pointExclusionReason: RunningPointExclusionReason? = null,
 
 ): CreatedDatetime(){
 
@@ -123,12 +139,14 @@ class RunningRecord(
         endDatetime?.also { this.endDatetime = it }
     }
 
-    fun finishAcceptance(status: RunningAcceptanceStatus, eligibleForPoints: Boolean) {
+    fun finishAcceptance(status: RunningAcceptanceStatus, eligibleForPoints: Boolean,
+                         pointExclusionReason: RunningPointExclusionReason? = null) {
         check(acceptanceStatus == RunningAcceptanceStatus.PENDING)
         require(status != RunningAcceptanceStatus.PENDING)
         originalStartDatetime = startDatetime
         originalEndDatetime = checkNotNull(endDatetime)
         acceptanceStatus = status
+        this.pointExclusionReason = pointExclusionReason
         isEnd = true
         pointEligible = status == RunningAcceptanceStatus.ACCEPTED && eligibleForPoints
         leagueDistanceOverride = if (status == RunningAcceptanceStatus.ACCEPTED) distance else 0

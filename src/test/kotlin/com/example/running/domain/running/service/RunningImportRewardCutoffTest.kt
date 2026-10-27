@@ -7,6 +7,9 @@ import com.example.running.domain.running.controller.dto.ImportRunningBatchReque
 import com.example.running.domain.running.controller.dto.ImportRunningRecordRequest
 import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.enums.RunningRecordSource
+import com.example.running.domain.running.enums.RunningAcceptanceStatus
+import com.example.running.domain.running.enums.RunningPointExclusionReason
+import com.example.running.domain.running.enums.RunningRecordingMethod
 import com.example.running.domain.running.repository.RunningRecordItemRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.entity.UserConfiguration
@@ -133,11 +136,14 @@ class RunningImportRewardCutoffTest {
 
     @Test
     fun `repeated batch updates display metrics without topping up points or frozen distance`() {
-        val original = record("same", cutoff.plusHours(1))
+        val original = ImportRunningRecordRequest("same", 2000, 600,
+            startTimestamp = cutoff.plusHours(1).toEpochSecond(),
+            endTimestamp = cutoff.plusHours(1).plusMinutes(10).toEpochSecond(),
+            recordingMethod = "RECORDED", sourceBundleId = "test.original.app", sourceAppName = "Original app")
         val first = service.importBatch(7, batch(original), cutoff.plusHours(2).toInstant())
         val edited = ImportRunningRecordRequest("same", 3000, 600,
             startTimestamp = original.startTimestamp, endTimestamp = original.endTimestamp,
-            recordingMethod = "RECORDED")
+            recordingMethod = "MANUAL", sourceBundleId = "test.changed.app", sourceAppName = "Changed app")
         val replay = service.importBatch(7, batch(edited), cutoff.plusHours(3).toInstant())
 
         assertEquals(20, first.awardedPoint)
@@ -147,7 +153,77 @@ class RunningImportRewardCutoffTest {
         assertEquals(2000, stored.getValue("same").leagueDistanceOverride)
         assertEquals(cutoff.plusHours(1).plusMinutes(10), stored.getValue("same").originalEndDatetime)
         assertTrue(stored.getValue("same").pointAwarded)
+        assertEquals(RunningAcceptanceStatus.ACCEPTED, stored.getValue("same").acceptanceStatus)
+        assertEquals("test.original.app", stored.getValue("same").sourceAppId)
+        assertEquals("Original app", stored.getValue("same").sourceAppName)
+        assertEquals(RunningRecordingMethod.RECORDED, stored.getValue("same").recordingMethod)
+        assertNull(stored.getValue("same").pointExclusionReason)
         assertEquals(cutoff, configuration.healthImportRewardCutoffAt)
+    }
+
+    @Test
+    fun `Garmin-looking client metadata cannot upgrade an unknown Health recording`() {
+        val claimedGarmin = ImportRunningRecordRequest("claimed-garmin", 2000, 600,
+            startTimestamp = cutoff.plusHours(1).toEpochSecond(),
+            endTimestamp = cutoff.plusHours(1).plusMinutes(10).toEpochSecond(),
+            recordingMethod = "UNKNOWN", sourceBundleId = "com.garmin.connect.mobile", sourceAppName = "Garmin Connect")
+
+        val response = service.importBatch(7, batch(claimedGarmin), cutoff.plusHours(2).toInstant())
+
+        val saved = stored.getValue("claimed-garmin")
+        assertEquals(0, response.awardedPoint)
+        assertEquals(RunningRecordSource.HEALTH, saved.source)
+        assertEquals("com.garmin.connect.mobile", saved.sourceAppId)
+        assertEquals("Garmin Connect", saved.sourceAppName)
+        assertEquals(RunningRecordingMethod.UNKNOWN, saved.recordingMethod)
+        assertEquals(RunningPointExclusionReason.RECORDING_METHOD_UNKNOWN, saved.pointExclusionReason)
+        assertEquals(RunningAcceptanceStatus.PERSONAL_ONLY, saved.acceptanceStatus)
+        assertEquals(0, saved.leagueDistanceOverride)
+        verifyNoInteractions(points)
+    }
+
+    @Test
+    fun `legacy same-ID replay cannot fill missing provenance or change its original personal classification`() {
+        val legacy = RunningRecord(id = 10, user = com.example.running.domain.user.entity.User(7),
+            distance = 2000, durationSec = 600, source = RunningRecordSource.HEALTH,
+            externalId = "legacy", startDatetime = cutoff.plusHours(1),
+            endDatetime = cutoff.plusHours(1).plusMinutes(10)).apply {
+            finishAcceptance(RunningAcceptanceStatus.PERSONAL_ONLY, false)
+        }
+        stored["legacy"] = legacy
+        val replay = ImportRunningRecordRequest("legacy", 3000, 600,
+            startTimestamp = legacy.startDatetime.toEpochSecond(), endTimestamp = legacy.endDatetime!!.toEpochSecond(),
+            recordingMethod = "RECORDED", sourceBundleId = "test.later.app", sourceAppName = "Later app")
+
+        val response = service.importBatch(7, batch(replay), cutoff.plusHours(2).toInstant())
+
+        assertEquals(0, response.awardedPoint)
+        assertEquals(1, response.updatedCount)
+        assertEquals(3000, legacy.distance)
+        assertNull(legacy.sourceAppId)
+        assertNull(legacy.sourceAppName)
+        assertNull(legacy.recordingMethod)
+        assertNull(legacy.pointExclusionReason)
+        assertEquals(RunningAcceptanceStatus.PERSONAL_ONLY, legacy.acceptanceStatus)
+        assertFalse(legacy.pointEligible)
+        assertFalse(legacy.pointAwarded)
+        assertEquals(0, legacy.leagueDistanceOverride)
+        verifyNoInteractions(points)
+    }
+
+    @Test
+    fun `blank app metadata is stored as null without changing a recorded workout's eligibility`() {
+        val blankApp = ImportRunningRecordRequest("blank-app", 2000, 600,
+            startTimestamp = cutoff.plusHours(1).toEpochSecond(),
+            endTimestamp = cutoff.plusHours(1).plusMinutes(10).toEpochSecond(),
+            recordingMethod = "RECORDED", sourceBundleId = "  ", sourceAppName = " \t ")
+
+        val response = service.importBatch(7, batch(blankApp), cutoff.plusHours(2).toInstant())
+
+        assertEquals(20, response.awardedPoint)
+        assertNull(stored.getValue("blank-app").sourceAppId)
+        assertNull(stored.getValue("blank-app").sourceAppName)
+        assertEquals(RunningRecordingMethod.RECORDED, stored.getValue("blank-app").recordingMethod)
     }
 
     @Test
@@ -161,6 +237,10 @@ class RunningImportRewardCutoffTest {
         assertEquals(2, response.personalOnlyCount)
         assertFalse(stored.getValue("manual").pointEligible)
         assertFalse(stored.getValue("unknown").pointEligible)
+        assertEquals(RunningRecordingMethod.MANUAL, stored.getValue("manual").recordingMethod)
+        assertEquals(RunningPointExclusionReason.MANUAL_ENTRY, stored.getValue("manual").pointExclusionReason)
+        assertEquals(RunningRecordingMethod.UNKNOWN, stored.getValue("unknown").recordingMethod)
+        assertEquals(RunningPointExclusionReason.RECORDING_METHOD_UNKNOWN, stored.getValue("unknown").pointExclusionReason)
         verifyNoInteractions(points)
     }
 

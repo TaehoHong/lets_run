@@ -5,6 +5,8 @@ import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.point.service.UserPointService
 import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.enums.RunningAcceptanceStatus
+import com.example.running.domain.running.enums.RunningPointExclusionReason
+import com.example.running.domain.running.enums.RunningRecordingMethod
 import com.example.running.domain.running.repository.RunningRecordItemRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.entity.User
@@ -39,6 +41,7 @@ class RunningAcceptanceServiceTest {
         `when`(records.findOverlapCandidates(7, incoming.startDatetime, incoming.endDatetime!!)).thenReturn(listOf(personal, paid))
         assertEquals(0, accept(incoming).awardedPoint)
         assertEquals(RunningAcceptanceStatus.DUPLICATE, incoming.acceptanceStatus)
+        assertEquals(RunningPointExclusionReason.OVERLAPPING_ACTIVITY, incoming.pointExclusionReason)
         assertEquals(RunningAcceptanceStatus.PERSONAL_ONLY, personal.acceptanceStatus)
         assertFalse(incoming.isStatisticIncluded)
         verifyNoInteractions(points, league)
@@ -58,18 +61,29 @@ class RunningAcceptanceServiceTest {
         assertEquals(2000, incoming.leagueDistanceOverride)
         assertEquals(originalEnd, incoming.originalEndDatetime)
         assertEquals(originalEnd, incoming.leagueEndDatetimeOverride)
+        assertEquals(RunningRecordingMethod.RECORDED, incoming.recordingMethod)
+        assertNull(incoming.pointExclusionReason)
         assertEquals(1, mockingDetails(points).invocations.count { it.method.name == "updatePoint" })
     }
 
     @Test
     fun `recorded activity replaces overlapping personal records and recomputes their shoes`() {
-        val personal = record(2).apply { finishAcceptance(RunningAcceptanceStatus.PERSONAL_ONLY, false) }
+        val personal = record(2).apply {
+            sourceAppId = "test.manual.app"
+            sourceAppName = "Manual app"
+            recordingMethod = RunningRecordingMethod.MANUAL
+            finishAcceptance(RunningAcceptanceStatus.PERSONAL_ONLY, false, RunningPointExclusionReason.MANUAL_ENTRY)
+        }
         val incoming = record(3)
         `when`(records.findOverlapCandidates(7, incoming.startDatetime, incoming.endDatetime!!)).thenReturn(listOf(personal))
         accept(incoming)
         assertEquals(RunningAcceptanceStatus.ACCEPTED, incoming.acceptanceStatus)
         assertEquals(RunningAcceptanceStatus.DUPLICATE, personal.acceptanceStatus)
         assertFalse(personal.isStatisticIncluded)
+        assertEquals("test.manual.app", personal.sourceAppId)
+        assertEquals("Manual app", personal.sourceAppName)
+        assertEquals(RunningRecordingMethod.MANUAL, personal.recordingMethod)
+        assertEquals(RunningPointExclusionReason.MANUAL_ENTRY, personal.pointExclusionReason)
         verify(recordService).refreshShoeTotals(listOf(personal))
     }
 
@@ -81,6 +95,46 @@ class RunningAcceptanceServiceTest {
         assertEquals(RunningAcceptanceStatus.PERSONAL_ONLY, personal.acceptanceStatus)
         assertTrue(personal.isStatisticIncluded)
         assertEquals(0, personal.leagueDistanceOverride)
+        assertEquals(RunningRecordingMethod.UNKNOWN, personal.recordingMethod)
+        assertEquals(RunningPointExclusionReason.RECORDING_METHOD_UNKNOWN, personal.pointExclusionReason)
         verifyNoInteractions(points, league)
+    }
+
+    @Test
+    fun `explicit manual method preserves its distinct exclusion reason`() {
+        val manual = record(2).apply { recordingMethod = RunningRecordingMethod.MANUAL }
+
+        accept(manual, recorded = false)
+
+        assertEquals(RunningPointExclusionReason.MANUAL_ENTRY, manual.pointExclusionReason)
+        assertFalse(manual.pointEligible)
+        verifyNoInteractions(points, league)
+    }
+
+    @Test
+    fun `recorded history before cutoff retains league distance with a point-only exclusion reason`() {
+        val historical = record(2)
+
+        val result = service.accept(7, historical, true, false, start.plusHours(1).toInstant())
+
+        assertEquals(0, result.awardedPoint)
+        assertEquals(RunningAcceptanceStatus.ACCEPTED, historical.acceptanceStatus)
+        assertEquals(RunningPointExclusionReason.BEFORE_POINT_CUTOFF, historical.pointExclusionReason)
+        assertEquals(2000, historical.leagueDistanceOverride)
+        assertFalse(historical.pointEligible)
+        verify(league).raiseCurrentLeagueDistance(7)
+        verifyNoInteractions(points)
+    }
+
+    @Test
+    fun `eligible short activity has no exclusion reason even when its distance awards zero points`() {
+        val short = record(2, distance = 50)
+
+        assertEquals(0, accept(short).awardedPoint)
+
+        assertTrue(short.pointEligible)
+        assertFalse(short.pointAwarded)
+        assertNull(short.pointExclusionReason)
+        verifyNoInteractions(points)
     }
 }

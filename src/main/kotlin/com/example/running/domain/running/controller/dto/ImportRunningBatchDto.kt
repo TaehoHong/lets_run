@@ -18,6 +18,8 @@ class ImportRunningRecordRequest(
     val recordingMethod: String? = null,
     @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = OptionalRunningStringDeserializer::class)
     val sourceBundleId: String? = null,
+    @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = OptionalRunningStringDeserializer::class)
+    val sourceAppName: String? = null,
 )
 
 class ImportRunningRecordItemRequest(

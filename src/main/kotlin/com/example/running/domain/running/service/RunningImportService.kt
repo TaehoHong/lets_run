@@ -7,6 +7,7 @@ import com.example.running.domain.running.controller.dto.ImportRunningRecordStat
 import com.example.running.domain.running.entity.RunningRecord
 import com.example.running.domain.running.entity.RunningRecordItem
 import com.example.running.domain.running.enums.RunningRecordSource
+import com.example.running.domain.running.enums.RunningRecordingMethod
 import com.example.running.domain.running.repository.RunningRecordItemRepository
 import com.example.running.domain.running.repository.RunningRecordRepository
 import com.example.running.domain.user.entity.User
@@ -144,6 +145,11 @@ class RunningImportService(
                 pointAwarded = false,
                 startDatetime = startDatetime,
                 endDatetime = endDatetime,
+                sourceAppId = if (source == RunningRecordSource.HEALTH) request.sourceBundleId?.takeUnless { it.isBlank() } else null,
+                sourceAppName = if (source == RunningRecordSource.HEALTH) request.sourceAppName?.takeUnless { it.isBlank() } else null,
+                recordingMethod = if (source == RunningRecordSource.GARMIN) {
+                    if (manual) RunningRecordingMethod.MANUAL else RunningRecordingMethod.RECORDED
+                } else RunningRecordingMethod.valueOf(request.recordingMethod ?: "UNKNOWN"),
             )
         )
         replaceItems(savedRecord.id, request)
@@ -244,6 +250,7 @@ class RunningImportService(
         request.records.forEach { record ->
             validation.metrics(record.recordingMethod == null || record.recordingMethod in setOf("RECORDED", "MANUAL", "UNKNOWN"))
             validation.metrics(record.sourceBundleId == null || record.sourceBundleId.length <= 255)
+            validation.metrics(record.sourceAppName == null || record.sourceAppName.length <= 255)
             validation.metrics(record.startTimestamp in 0..253402300799 && record.endTimestamp in 0..253402300799)
             val start = validation.timestamp(record.startTimestamp)
             val end = validation.timestamp(record.endTimestamp)

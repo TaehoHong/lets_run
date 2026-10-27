@@ -2,6 +2,8 @@ package com.example.running.domain.garmin.service
 
 import com.example.running.domain.running.service.*
 import com.example.running.domain.running.enums.RunningAcceptanceStatus
+import com.example.running.domain.running.enums.RunningPointExclusionReason
+import com.example.running.domain.running.enums.RunningRecordingMethod
 import com.example.running.domain.shoe.service.ShoeService
 import com.example.running.domain.running.controller.dto.*
 import com.example.running.domain.running.entity.RunningRecord
@@ -35,7 +37,8 @@ class GarminRunningImportTest {
     private val userConfig = UserConfiguration(7, false)
     private val request = ImportRunningRecordRequest("123", 2000, 600,
         startTimestamp = connected.plusHours(1).toEpochSecond(),
-        endTimestamp = connected.plusHours(1).plusSeconds(600).toEpochSecond())
+        endTimestamp = connected.plusHours(1).plusSeconds(600).toEpochSecond(),
+        recordingMethod = "UNKNOWN", sourceBundleId = "test.ignored.app", sourceAppName = "Ignored app")
 
     @BeforeEach
     fun setup() { `when`(configuration.getOrCreateForUpdate(7)).thenReturn(userConfig) }
@@ -49,6 +52,10 @@ class GarminRunningImportTest {
         assertEquals(1, result.createdCount)
         assertEquals(20, result.awardedPoint)
         assertEquals(RunningRecordSource.GARMIN, capture.value.source)
+        assertEquals(RunningRecordingMethod.RECORDED, capture.value.recordingMethod)
+        assertNull(capture.value.sourceAppId)
+        assertNull(capture.value.sourceAppName)
+        assertNull(capture.value.pointExclusionReason)
         assertTrue(capture.value.pointEligible)
         assertEquals(connected.plusHours(1), capture.value.startDatetime)
         assertFalse(userConfig.healthImportEnabled)
@@ -67,6 +74,8 @@ class GarminRunningImportTest {
         assertTrue(capture.value.isStatisticIncluded)
         assertFalse(capture.value.pointEligible)
         assertEquals(0, capture.value.leagueDistanceOverride)
+        assertEquals(RunningRecordingMethod.MANUAL, capture.value.recordingMethod)
+        assertEquals(RunningPointExclusionReason.MANUAL_ENTRY, capture.value.pointExclusionReason)
     }
 
     @Test

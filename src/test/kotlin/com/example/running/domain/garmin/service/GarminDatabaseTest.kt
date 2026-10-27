@@ -103,6 +103,38 @@ class GarminDatabaseTest {
     fun cleanup() { if (::admin.isInitialized) admin.execute("DROP DATABASE $database") }
 
     @Test
+    fun `import provenance migration leaves legacy rows and reward snapshots unchanged`() {
+        jdbc.execute("""ALTER TABLE running_record
+            DROP COLUMN source_app_id,
+            DROP COLUMN source_app_name,
+            DROP COLUMN recording_method,
+            DROP COLUMN point_exclusion_reason""")
+        jdbc.update("""INSERT INTO running_record
+            (id, user_id, distance, is_end, start_datetime, end_datetime, point_awarded, point_eligible,
+             acceptance_status, league_distance_override, league_end_datetime_override,
+             original_start_datetime, original_end_datetime) VALUES
+            (21, 7, 3000, 1, '2026-10-01 12:00:00', '2026-10-01 12:10:00', 1, 1,
+             'ACCEPTED', 2000, '2026-10-01 12:10:00', '2026-10-01 12:00:00', '2026-10-01 12:10:00')""")
+        val snapshotQuery = """SELECT id, user_id, distance, is_end, start_datetime, end_datetime,
+            point_awarded, point_eligible, acceptance_status, league_distance_override,
+            league_end_datetime_override, original_start_datetime, original_end_datetime
+            FROM running_record WHERE id = 21"""
+        val before = jdbc.queryForMap(snapshotQuery)
+
+        val migration = Files.readString(Path.of("src/main/resources/db/migration/V1.10.0__preserve_running_import_provenance.sql"))
+        migration.split(';').filter { it.isNotBlank() }.forEach(jdbc::execute)
+
+        assertEquals(before, jdbc.queryForMap(snapshotQuery))
+        assertEquals(1, jdbc.queryForObject("""SELECT COUNT(*) FROM running_record WHERE id = 21
+            AND source_app_id IS NULL AND source_app_name IS NULL
+            AND recording_method IS NULL AND point_exclusion_reason IS NULL""", Int::class.java))
+        assertEquals(4, jdbc.queryForObject("""SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'running_record' AND IS_NULLABLE = 'YES'
+            AND COLUMN_NAME IN ('source_app_id', 'source_app_name', 'recording_method', 'point_exclusion_reason')""",
+            Int::class.java, database))
+    }
+
+    @Test
     fun `Health baseline migration preserves legacy cutoffs and leaves unknown first activation null`() {
         jdbc.execute("""ALTER TABLE user_configuration
             DROP COLUMN health_import_first_enabled_at,
