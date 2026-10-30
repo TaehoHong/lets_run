@@ -18,7 +18,7 @@ class ActivityConnection(
 class ActivityOAuthState(val hash: String, val userId: Long, val verifier: String, val expiresAt: Instant)
 class ActivityInbox(val id: Long, val hash: String, val payload: String, val attempts: Int, val createdAt: Instant = Instant.EPOCH)
 
-open class ActivityProviderRepository(private val jdbc: JdbcTemplate, private val provider: String) {
+class ActivityProviderRepository(private val jdbc: JdbcTemplate, private val provider: String) {
     fun connection(userId: Long): ActivityConnection? = jdbc.query(
         "SELECT c.*, k.access_token_encrypted, k.refresh_token_encrypted, k.access_expires_at, k.refresh_expires_at FROM activity_connection c LEFT JOIN activity_oauth_credential k ON k.connection_id = c.id WHERE c.provider = ? AND c.user_id = ?",
         { rs, _ -> connection(rs) }, provider, userId).firstOrNull()

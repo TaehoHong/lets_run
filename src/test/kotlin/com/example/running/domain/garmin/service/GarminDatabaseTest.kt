@@ -29,7 +29,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mockito.*
+import org.springframework.aop.support.AopUtils
+import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.dao.DataAccessResourceFailureException
+import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.jdbc.datasource.DriverManagerDataSource
@@ -63,6 +66,7 @@ class GarminDatabaseTest {
     private lateinit var admin: JdbcTemplate
     private lateinit var jdbc: JdbcTemplate
     private lateinit var repository: GarminRepository
+    private lateinit var context: AnnotationConfigApplicationContext
     private lateinit var transaction: TransactionTemplate
     private val now = Instant.parse("2026-10-24T12:00:00Z")
 
@@ -95,12 +99,43 @@ class GarminDatabaseTest {
         jdbc.update("INSERT INTO user VALUES (7), (8)")
         Flyway.configure().dataSource(source).baselineOnMigrate(true).baselineVersion("1.6.0")
             .locations("filesystem:src/main/resources/db/migration").load().migrate()
-        repository = GarminRepository(jdbc)
+        context = AnnotationConfigApplicationContext().apply {
+            beanFactory.registerSingleton("jdbcTemplate", jdbc)
+            register(PersistenceExceptionTranslationPostProcessor::class.java, GarminRepository::class.java)
+            refresh()
+        }
+        repository = context.getBean(GarminRepository::class.java)
         transaction = TransactionTemplate(DataSourceTransactionManager(source))
     }
 
     @AfterEach
-    fun cleanup() { if (::admin.isInitialized) admin.execute("DROP DATABASE $database") }
+    fun cleanup() {
+        if (::context.isInitialized) context.close()
+        if (::admin.isInitialized) admin.execute("DROP DATABASE $database")
+    }
+
+    @Test
+    fun `Spring managed repository returns disconnected for a user without creating a connection`() {
+        val properties = GarminProperties(enabled = true, clientId = "test", clientSecret = "test",
+            encryptionKey = Base64.getEncoder().encodeToString(ByteArray(32) { 7 }))
+        val users = mock(UserRepository::class.java)
+        `when`(users.findById(7)).thenReturn(Optional.of(User(7)))
+        val service = GarminConnectionService(properties, repository, users,
+            mock(UserConfigurationService::class.java), GarminTokenCipher(properties),
+            mock(GarminApiClient::class.java), transaction)
+        assertTrue(AopUtils.isCglibProxy(repository))
+
+        val response = service.connection(7)
+
+        assertTrue(response.available)
+        assertEquals(GarminConnectionStatus.DISCONNECTED, response.status)
+        assertNull(response.connectedAt)
+        assertNull(response.lastReceivedAt)
+        assertNull(response.lastImportedAt)
+        assertEquals(0, response.lastImportedCount)
+        assertFalse(response.permissionGranted)
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM activity_connection", Int::class.java))
+    }
 
     @Test
     fun `import provenance migration leaves legacy rows and reward snapshots unchanged`() {

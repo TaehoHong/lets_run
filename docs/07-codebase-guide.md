@@ -28,6 +28,7 @@
 | 인증 사용자 | [authenticateWithUser](../src/main/kotlin/com/example/running/helper/AuthenticationHelper.kt) / [SecurityConfig](../src/main/kotlin/com/example/running/security/SecurityConfig.kt) / [TokenService](../src/main/kotlin/com/example/running/security/service/TokenService.kt) | 도메인 controller와 인증 경계 |
 | 공통 오류 | [ApiException](../src/main/kotlin/com/example/running/exception/ApiException.kt) / [ControllerAdvice](../src/main/kotlin/com/example/running/exception/ControllerAdvice.kt) / [RunningValidationException](../src/main/kotlin/com/example/running/exception/RunningValidationException.kt) | 기존 API 오류 형태와 도메인 검증 |
 | 기록 검증·수락 | [RunningValidationService](../src/main/kotlin/com/example/running/domain/running/service/RunningValidationService.kt) / [RunningAcceptanceService](../src/main/kotlin/com/example/running/domain/running/service/RunningAcceptanceService.kt) / [CompletedRunningService](../src/main/kotlin/com/example/running/domain/running/service/CompletedRunningService.kt) | 기록 진입 경로의 검증·소유권·수락·보상 |
+| 업체별 운동 연동 저장 | [ActivityProviderRepository](../src/main/kotlin/com/example/running/domain/activity/repository/ActivityProviderRepository.kt) / [GarminRepository](../src/main/kotlin/com/example/running/domain/garmin/repository/GarminRepository.kt) | 공통 SQL은 provider가 고정된 일반 객체가 소유하고, Spring `@Repository`인 Garmin 저장소가 상속 없이 위임한다. 서비스·워커가 트랜잭션을 소유한다. |
 | 영속 엔티티 | [BaseDatetime](../src/main/kotlin/com/example/running/domain/common/entity/BaseDatetime.kt) / [CreatedDatetime](../src/main/kotlin/com/example/running/domain/common/entity/CreatedDatetime.kt) / [Flyway migration](../src/main/resources/db/migration) | JPA 공통 필드와 DB 변경 이력 |
 | API 로그 | [ApiLoggingInterceptor](../src/main/kotlin/com/example/running/common/interceptor/ApiLoggingInterceptor.kt) | 요청/응답 데이터와 경로별 처리의 실제 구현 |
 
@@ -62,6 +63,7 @@
 | 전체 빌드 | `./gradlew build` | 프로젝트 build task와 그 의존 task |
 | 기록 수락·검증 | `./gradlew test --tests "*CompletedRunningServiceTest" --tests "*RunningValidationServiceTest"` | 해당 단위 테스트 |
 | 연동 로그 예제 | `./gradlew test --tests "*GarminLoggingTest"` | Garmin 로깅 테스트의 대상 범위 |
+| 연동 저장·프록시 경계 | `./gradlew test --tests "*GarminDatabaseTest"` | [GarminDatabaseTest](../src/test/kotlin/com/example/running/domain/garmin/service/GarminDatabaseTest.kt)의 격리 MariaDB 조건. Spring 예외 변환 프록시를 거친 저장소의 미연결 조회·연결·state·inbox·provider 격리 시나리오. 실행 여부와 결과는 작업 계획에서 구분한다. |
 | 집계·재화 예제 | `./gradlew test --tests "*RunningStatisticsTest" --tests "*UserPointHistoryServicePaginationTest"` | 각 클래스의 조건 |
 | DB·HTTP 경계 | [DB 테스트 구성](../src/test/kotlin/com/example/running/domain/running/service/RunningAcceptanceDatabaseTest.kt) / [HTTP 테스트 구성](../src/test/kotlin/com/example/running/domain/running/controller/CompletedRunningHttpTest.kt) | 접속·설정·소유 데이터 조건을 해당 테스트에서 확인 |
 | 컴파일·패키징 | `./gradlew compileKotlin compileTestKotlin`; `./gradlew bootJar` | Gradle/KSP·JDK 설정; compileTestKotlin은 테스트 소스 컴파일이며 테스트를 실행하지 않음 |
