@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.*
 import org.springframework.transaction.PlatformTransactionManager
@@ -72,6 +73,76 @@ class GarminConnectionServiceTest {
         assertEquals("refresh", cipher.decrypt(checkNotNull(captor.value.refreshToken), "connection:7:refresh"))
         assertEquals(GarminConnectionStatus.CONNECTED, captor.value.status)
         verify(repository).deleteStates(7)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["app", "runtaeho-dev"])
+    fun `authorization binds the app scheme and random nonce in the stored state`(appScheme: String) {
+        `when`(api.authorizationUrl(anyString(), anyString())).thenReturn("https://connect.garmin.com/oauth2Confirm")
+
+        val response = service.authorize(7, appScheme)
+
+        assertTrue(response.state.matches(Regex("${appScheme}_[A-Za-z0-9_-]{43}")))
+        val captor = ArgumentCaptor.forClass(GarminOAuthState::class.java)
+        verify(repository).insertState(captor.capture() ?: claimed)
+        assertEquals(GarminPkce.stateHash(response.state), captor.value.hash)
+        assertEquals(7, captor.value.userId)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["app", "runtaeho-dev"])
+    fun `successful callback returns to the app that started authorization`(appScheme: String) {
+        val scopedState = "${appScheme}_$state"
+        claimCallbackState(scopedState)
+
+        val result = service.callback(scopedState, "code", null)
+
+        assertEquals("$appScheme://user/activity-connection?garminResult=connected&state=$scopedState", result)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["app", "runtaeho-dev"])
+    fun `cancelled callback returns to the same app without exchanging credentials`(appScheme: String) {
+        val scopedState = "${appScheme}_$state"
+        claimCallbackState(scopedState)
+
+        val result = service.callback(scopedState, null, "access_denied")
+
+        assertEquals("$appScheme://user/activity-connection?garminResult=cancelled&state=$scopedState", result)
+        verifyNoInteractions(api)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["app", "runtaeho-dev"])
+    fun `failed callback also returns to the same app`(appScheme: String) {
+        val scopedState = "${appScheme}_$state"
+        claimCallbackState(scopedState)
+        `when`(api.exchangeCode("code", "verifier")).thenThrow(GarminApiException(503))
+
+        val result = service.callback(scopedState, "code", null)
+
+        assertEquals("$appScheme://user/activity-connection?garminResult=failed&state=$scopedState", result)
+    }
+
+    @Test
+    fun `changing the app scheme cannot consume the original authorization state`() {
+        claimCallbackState("app_$state")
+
+        val error = assertFailsWith<GarminRequestException> {
+            service.callback("runtaeho-dev_$state", "code", null)
+        }
+
+        assertEquals(400, error.status)
+        verifyNoInteractions(api)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["https", "javascript", "unknown", "runtaeho-dev://evil"])
+    fun `authorization rejects unregistered app schemes before storing state`(appScheme: String) {
+        val error = assertFailsWith<GarminRequestException> { service.authorize(7, appScheme) }
+
+        assertEquals(400, error.status)
+        verifyNoInteractions(repository, api)
     }
 
     @Test
@@ -323,6 +394,13 @@ class GarminConnectionServiceTest {
         order.verify(repository).connection(7)
         verifyNoInteractions(api)
         verify(repository, never()).clearConnection(7)
+    }
+
+    private fun claimCallbackState(value: String) {
+        val stateHash = GarminPkce.stateHash(value)
+        val claim = GarminOAuthState(stateHash, 7, cipher.encrypt("verifier", "state:$stateHash"), Instant.now().plusSeconds(600))
+        `when`(repository.consumeState(eq(stateHash) ?: stateHash, any(Instant::class.java) ?: Instant.EPOCH)).thenReturn(claim)
+        `when`(repository.state(stateHash)).thenReturn(claim)
     }
 
     private fun value(

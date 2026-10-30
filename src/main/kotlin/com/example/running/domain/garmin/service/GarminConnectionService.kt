@@ -24,6 +24,12 @@ class GarminConnectionService(
     private val api: GarminApiClient,
     private val transaction: TransactionTemplate,
 ) {
+    private val appReturnUris = mapOf(
+        "app" to "app://user/activity-connection",
+        "runtaeho-dev" to "runtaeho-dev://user/activity-connection",
+    )
+    private val stateNoncePattern = Regex("[A-Za-z0-9_-]{43}")
+
     fun connection(userId: Long): GarminConnectionResponse {
         requireActive(userId)
         val value = repository.connection(userId)
@@ -38,9 +44,12 @@ class GarminConnectionService(
         )
     }
 
-    fun authorize(userId: Long): GarminAuthorizationResponse {
+    fun authorize(userId: Long, appScheme: String? = null): GarminAuthorizationResponse {
         requireEnabled()
-        val state = GarminPkce.state()
+        if (appScheme != null && appScheme !in appReturnUris) throw GarminRequestException(400)
+        val nonce = GarminPkce.state()
+        // Hash the app target together with the nonce so callbacks cannot switch app profiles.
+        val state = if (appScheme == null) nonce else "${appScheme}_$nonce"
         val verifier = GarminPkce.verifier()
         val hash = GarminPkce.stateHash(state)
         val expires = Instant.now().plusSeconds(600)
@@ -62,7 +71,7 @@ class GarminConnectionService(
     // State consumption commits before contacting Garmin, so failed callbacks cannot be replayed.
     fun callback(state: String, code: String?, error: String?): String {
         requireEnabled()
-        if (!state.matches(Regex("[A-Za-z0-9_-]{43}"))) throw GarminRequestException(400)
+        appReturnUri(state)
         val hash = GarminPkce.stateHash(state)
         val claimed = transaction.execute { repository.consumeState(hash, Instant.now()) } ?: throw GarminRequestException(400)
         if (error != null || code.isNullOrBlank()) return appReturn(state, "cancelled")
@@ -211,6 +220,14 @@ class GarminConnectionService(
         if (!properties.enabled) throw GarminRequestException(503)
     }
 
+    private fun appReturnUri(state: String): String {
+        // Existing clients and in-flight requests did not include an app scheme.
+        if (stateNoncePattern.matches(state)) return "runtaeho://user/activity-connection"
+        val parts = state.split('_', limit = 2)
+        if (parts.size != 2 || !stateNoncePattern.matches(parts[1])) throw GarminRequestException(400)
+        return appReturnUris[parts[0]] ?: throw GarminRequestException(400)
+    }
+
     private fun appReturn(state: String, result: String) =
-        "runtaeho://user/activity-connection?garminResult=$result&state=$state"
+        "${appReturnUri(state)}?garminResult=$result&state=$state"
 }

@@ -1,5 +1,6 @@
 package com.example.running.domain.garmin.controller
 
+import com.example.running.domain.garmin.controller.dto.GarminAuthorizationRequest
 import com.example.running.domain.garmin.service.GarminConnectionService
 import com.example.running.helper.authenticateWithUser
 import jakarta.servlet.http.HttpServletResponse
@@ -22,7 +23,8 @@ class GarminController(
     fun connection() = authenticateWithUser { connections.connection(it) }
 
     @PostMapping("/authorization")
-    fun authorize() = authenticateWithUser { connections.authorize(it) }
+    fun authorize(@RequestBody(required = false) request: GarminAuthorizationRequest?) =
+        authenticateWithUser { connections.authorize(it, request?.appScheme) }
 
     @DeleteMapping("/connection")
     fun disconnect() = authenticateWithUser { connections.disconnect(it) }

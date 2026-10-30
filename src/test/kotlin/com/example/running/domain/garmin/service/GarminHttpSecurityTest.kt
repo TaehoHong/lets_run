@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.garmin.controller.*
+import com.example.running.domain.garmin.controller.dto.GarminAuthorizationResponse
 import com.example.running.domain.garmin.controller.dto.GarminConnectionResponse
 import com.example.running.domain.garmin.repository.GarminConnectionStatus
 import com.example.running.exception.ControllerAdvice
@@ -35,6 +36,7 @@ import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext
 import org.springframework.web.servlet.config.annotation.EnableWebMvc
+import java.time.Instant
 import kotlin.test.assertFalse
 
 class GarminHttpSecurityTest {
@@ -118,6 +120,34 @@ class GarminHttpSecurityTest {
             .andExpect(jsonPath("$.status").value("DISCONNECTED"))
         verify(service).connection(7)
         verify(service, never()).connection(8)
+    }
+
+    @Test
+    fun `authorization forwards the app scheme for the authenticated user`() {
+        val state = "runtaeho-dev_" + "a".repeat(43)
+        `when`(service.authorize(7, "runtaeho-dev")).thenReturn(GarminAuthorizationResponse(
+            "https://connect.garmin.com/oauth2Confirm?state=$state", state, Instant.EPOCH))
+
+        mvc.perform(post("/api/v1/garmin/authorization").header("Authorization", "Bearer user")
+            .contentType("application/json").content("{\"appScheme\":\"runtaeho-dev\"}"))
+            .andExpect(status().isOk)
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(jsonPath("$.state").value(state))
+
+        verify(service).authorize(7, "runtaeho-dev")
+    }
+
+    @Test
+    fun `authorization without a body remains compatible with existing clients`() {
+        val state = "a".repeat(43)
+        `when`(service.authorize(7)).thenReturn(GarminAuthorizationResponse(
+            "https://connect.garmin.com/oauth2Confirm?state=$state", state, Instant.EPOCH))
+
+        mvc.perform(post("/api/v1/garmin/authorization").header("Authorization", "Bearer user"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.state").value(state))
+
+        verify(service).authorize(7)
     }
 
     @Test
