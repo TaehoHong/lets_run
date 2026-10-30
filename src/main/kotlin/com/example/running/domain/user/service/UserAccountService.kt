@@ -5,6 +5,9 @@ import com.example.running.domain.common.enums.AccountTypeName
 import com.example.running.domain.user.entity.User
 import com.example.running.domain.user.entity.UserAccount
 import com.example.running.domain.user.repository.UserAccountRepository
+import com.example.running.domain.user.repository.UserRepository
+import com.example.running.exception.ApiError
+import com.example.running.exception.ApiException
 import com.example.running.utils.alsoIfTrue
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -15,7 +18,8 @@ import org.springframework.transaction.annotation.Transactional
 class UserAccountService(
     private val passwordEncoder: PasswordEncoder,
     private val userAccountRepository: UserAccountRepository,
-    private val oAuthTokenService: OAuthTokenService
+    private val oAuthTokenService: OAuthTokenService,
+    private val userRepository: UserRepository
 ) {
 
     @Transactional(readOnly = true)
@@ -46,13 +50,15 @@ class UserAccountService(
 
     @Transactional(rollbackFor = [Exception::class])
     fun hardDelete(id: Long, userId: Long) {
-        // 1. 권한 확인: 해당 계정이 현재 사용자 소유인지 확인
-        val userAccount = userAccountRepository.findById(id).orElseThrow {
-            RuntimeException("계정을 찾을 수 없습니다.")
-        }
+        // 사용자 행으로 연결 해제를 직렬화하고, 잠금 조회로 최신 계정 상태를 확인한다.
+        userRepository.findByIdForUpdate(userId) ?: throw ApiException(ApiError.NOT_FOUND_USER)
+        val accounts = userAccountRepository.findAllByUserIdForUpdate(userId)
+        val userAccount = accounts.firstOrNull { it.id == id }
+            ?: throw ApiException(ApiError.NOT_FOUND_USER_ACCOUNT)
 
-        if (userAccount.user.id != userId) {
-            throw RuntimeException("삭제 권한이 없습니다.")
+        if (userAccount.isEnabled && !userAccount.isDeleted &&
+            accounts.count { it.isEnabled && !it.isDeleted } <= 1) {
+            throw ApiException(ApiError.LAST_ACCOUNT_CANNOT_DISCONNECT)
         }
 
         // 2. OAuth Token 먼저 삭제 (FK 제약)

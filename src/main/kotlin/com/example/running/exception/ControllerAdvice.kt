@@ -49,7 +49,7 @@ class ControllerAdvice {
     fun handleApiException(ex: ApiException): ResponseEntity<ErrorResponse> {
 
         return ResponseEntity(
-            ErrorResponse(ex.message!!),
+            ErrorResponse(ex.message!!, code = ex.code),
             ex.status
         )
     }

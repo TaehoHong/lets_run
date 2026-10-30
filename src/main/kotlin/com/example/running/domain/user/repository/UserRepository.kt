@@ -23,11 +23,18 @@ import com.querydsl.core.types.Projections
 import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.JPAExpressions
 import com.querydsl.jpa.impl.JPAQueryFactory
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 
 @Repository
-interface UserRepository : JpaRepository<User, Long>, QUserRepository
+interface UserRepository : JpaRepository<User, Long>, QUserRepository {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select owner from User owner where owner.id = :id")
+    fun findByIdForUpdate(id: Long): User?
+}
 
 
 interface QUserRepository {

@@ -3,11 +3,18 @@ package com.example.running.domain.user.repository
 import com.example.running.domain.user.entity.QUserAccount.Companion.userAccount
 import com.example.running.domain.user.entity.UserAccount
 import com.querydsl.jpa.impl.JPAQueryFactory
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 
 @Repository
 interface UserAccountRepository : JpaRepository<UserAccount, Long>, QUserAccountRepository {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select account from UserAccount account where account.user.id = :userId order by account.id")
+    fun findAllByUserIdForUpdate(userId: Long): List<UserAccount>
+
     /**
      * 이메일, 계정 타입, 삭제 여부로 조회
      */

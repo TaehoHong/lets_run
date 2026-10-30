@@ -2,7 +2,7 @@ package com.example.running.exception
 
 import org.springframework.http.HttpStatus
 
-enum class ApiError(val status: HttpStatus, val message: String) {
+enum class ApiError(val status: HttpStatus, val message: String, val code: String? = null) {
 
 
     //Auth
@@ -13,6 +13,7 @@ enum class ApiError(val status: HttpStatus, val message: String) {
 
     // User
     NOT_FOUND_USER(HttpStatus.NOT_FOUND, "Not Found User"),
+    LAST_ACCOUNT_CANNOT_DISCONNECT(HttpStatus.BAD_REQUEST, "마지막 계정은 해제할 수 없습니다.", "LAST_ACCOUNT_CANNOT_DISCONNECT"),
 
 
     // Shoe
