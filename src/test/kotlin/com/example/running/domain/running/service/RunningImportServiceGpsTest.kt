@@ -28,7 +28,7 @@ class RunningImportServiceGpsTest {
         val configuration = mock(UserConfigurationService::class.java)
         val validation = RunningValidationService()
         val acceptance = mock(RunningAcceptanceService::class.java)
-        val service = RunningImportService(records, items, configuration, acceptance, validation)
+        val service = RunningImportService(records, items, configuration, acceptance, validation, mock(RunningRecordService::class.java))
         val existing = RunningRecord(id = 10, user = User(id = 1), source = RunningRecordSource.HEALTH)
         `when`(configuration.getOrCreateForUpdate(1)).thenReturn(UserConfiguration(1, true))
         `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.HEALTH, "workout")).thenReturn(existing)

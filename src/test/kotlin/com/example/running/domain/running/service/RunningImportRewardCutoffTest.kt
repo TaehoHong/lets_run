@@ -32,7 +32,7 @@ class RunningImportRewardCutoffTest {
     private val acceptance = RunningAcceptanceService(records, items, configurations, points,
         mock(LeagueService::class.java), mock(NotificationService::class.java),
         mock(RunningRecordService::class.java), validation)
-    private val service = RunningImportService(records, items, configurations, acceptance, validation)
+    private val service = RunningImportService(records, items, configurations, acceptance, validation, mock(RunningRecordService::class.java))
     private val cutoff = OffsetDateTime.parse("2026-10-01T00:00:00Z")
     private val configuration = UserConfiguration(7, healthImportEnabled = true,
         healthImportLastSyncedAt = cutoff, healthImportFirstEnabledAt = cutoff,

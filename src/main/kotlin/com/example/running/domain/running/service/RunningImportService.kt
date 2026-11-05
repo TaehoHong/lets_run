@@ -27,6 +27,7 @@ class RunningImportService(
     private val userConfigurationService: UserConfigurationService,
     private val acceptance: RunningAcceptanceService,
     private val validation: RunningValidationService,
+    private val recordService: RunningRecordService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -110,7 +111,24 @@ class RunningImportService(
             userId = userId,
             source = source,
             externalId = request.externalId
-        )
+        ) ?: if (source == RunningRecordSource.GARMIN) {
+            runningRecordRepository.findOverlapCandidates(userId, startDatetime, endDatetime)
+                .filter { record ->
+                    record.source == RunningRecordSource.HEALTH &&
+                        record.acceptanceStatus == RunningAcceptanceStatus.ACCEPTED &&
+                        record.originalStartDatetime?.toInstant() == startDatetime.toInstant() &&
+                        (record.sourceAppId == GARMIN_HEALTH_APP_ID ||
+                            (record.sourceAppId.isNullOrBlank() &&
+                                record.externalId?.startsWith("health-connect:$GARMIN_HEALTH_APP_ID:") == true))
+                }
+                .singleOrNull()
+                ?.apply {
+                    this.source = RunningRecordSource.GARMIN
+                    externalId = request.externalId
+                    sourceAppId = null
+                    sourceAppName = null
+                }
+        } else null
 
         if (sameExternalRecord != null) {
             sameExternalRecord.updateImported(request, startDatetime, endDatetime)
@@ -119,6 +137,7 @@ class RunningImportService(
             } else {
                 logger.info("Running import update preserved existing items: incomingItemsEmpty=true")
             }
+            if (source == RunningRecordSource.GARMIN) recordService.refreshShoeTotals(listOf(sameExternalRecord))
             return ImportResult(
                 status = if (sameExternalRecord.acceptanceStatus == RunningAcceptanceStatus.DUPLICATE) ImportRunningRecordStatus.DUPLICATE else ImportRunningRecordStatus.UPDATED,
                 awardedPoint = 0,
@@ -271,6 +290,7 @@ class RunningImportService(
     companion object {
         private const val MAX_BATCH_SIZE = 100
         private const val MAX_ITEM_COUNT_PER_RECORD = 1
+        private const val GARMIN_HEALTH_APP_ID = "com.garmin.android.apps.connectmobile"
         private val logger = LoggerFactory.getLogger(RunningImportService::class.java)
     }
 
