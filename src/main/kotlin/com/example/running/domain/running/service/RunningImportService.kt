@@ -275,6 +275,7 @@ class RunningImportService(
             val end = validation.timestamp(record.endTimestamp)
             validation.validate(start, end, record.distance, record.durationSec, record.cadence, record.heartRate, record.calorie, receivedAt)
             validation.metrics(record.items.size <= MAX_ITEM_COUNT_PER_RECORD)
+            validation.metrics(record.items.sumOf { it.gpsPoints.size.toLong() } <= 100000)
             validation.metrics(record.items.map { it.orderIndex }.toSet().size == record.items.size)
             record.items.forEach { item ->
                 validation.metrics(item.startTimestamp >= record.startTimestamp && item.endTimestamp <= record.endTimestamp)
@@ -289,7 +290,7 @@ class RunningImportService(
 
     companion object {
         private const val MAX_BATCH_SIZE = 100
-        private const val MAX_ITEM_COUNT_PER_RECORD = 1
+        private const val MAX_ITEM_COUNT_PER_RECORD = 10000
         private const val GARMIN_HEALTH_APP_ID = "com.garmin.android.apps.connectmobile"
         private val logger = LoggerFactory.getLogger(RunningImportService::class.java)
     }

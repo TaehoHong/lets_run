@@ -22,6 +22,30 @@ import java.time.OffsetDateTime
 
 class RunningImportServiceGpsTest {
     @Test
+    fun `health import persists multiple measured intervals without duplicating rewards`() {
+        val records = mock(RunningRecordRepository::class.java)
+        val items = mock(RunningRecordItemRepository::class.java)
+        val configuration = mock(UserConfigurationService::class.java)
+        val service = RunningImportService(records, items, configuration, mock(RunningAcceptanceService::class.java),
+            RunningValidationService(), mock(RunningRecordService::class.java))
+        `when`(configuration.getOrCreateForUpdate(1)).thenReturn(UserConfiguration(1, true))
+        `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.HEALTH, "intervals"))
+            .thenReturn(RunningRecord(id = 10, user = User(id = 1), source = RunningRecordSource.HEALTH))
+        val start = OffsetDateTime.parse("2026-10-01T00:00:00Z").toEpochSecond()
+        var saved: List<RunningRecordItem> = emptyList()
+        doAnswer { call -> saved = call.getArgument(0); null }.`when`(items).saveInBatch(anyList())
+        val result = service.importBatch(1, ImportRunningBatchRequest(listOf(ImportRunningRecordRequest(
+            "intervals", 1000, 300, heartRate = 140, cadence = 170, startTimestamp = start, endTimestamp = start + 300,
+            items = listOf(
+                ImportRunningRecordItemRequest(500, 150, 160, 130, orderIndex = 0, startTimestamp = start, endTimestamp = start + 150),
+                ImportRunningRecordItemRequest(500, 150, 180, 150, orderIndex = 1, startTimestamp = start + 150, endTimestamp = start + 300)
+            )))))
+        assertEquals(listOf<Short>(130, 150), saved.map { it.heartRate })
+        assertEquals(listOf<Short>(160, 180), saved.map { it.cadence })
+        assertEquals(0, result.awardedPoint)
+    }
+
+    @Test
     fun `an imported workout retains all 5001 GPS points in their original order`() {
         val records = mock(RunningRecordRepository::class.java)
         val items = mock(RunningRecordItemRepository::class.java)

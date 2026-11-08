@@ -40,12 +40,24 @@ class CompletedRunningService(
             user = User(id = userId), source = source, externalId = request.sessionId,
             startDatetime = start, endDatetime = end,
         ))
-        items.save(userId, record.id, listOf(RunningRecordItemDto(
+        var routeIndex = 0
+        val segments = request.items.mapIndexed { index, item ->
+            val route = mutableListOf<com.example.running.domain.running.service.dto.RunningRecordItemGpsPointDto>()
+            while (routeIndex < request.gpsPoints.size &&
+                (request.gpsPoints[routeIndex].timestampMs < item.endTimestamp * 1000 || index == request.items.lastIndex)) {
+                route.add(request.gpsPoints[routeIndex++])
+            }
+            RunningRecordItemDto(item.distance, item.durationSec, item.cadence, item.heartRate,
+                item.minHeartRate, item.maxHeartRate, item.orderIndex,
+                validation.timestamp(item.startTimestamp), validation.timestamp(item.endTimestamp),
+                route)
+        }.ifEmpty { listOf(RunningRecordItemDto(
             distance = request.distance, durationSec = request.durationSec,
-            cadence = request.cadence.toShort(), heartRate = request.heartRate.toShort(),
+            cadence = 0, heartRate = 0,
             minHeartRate = 0, maxHeartRate = 0, orderIndex = 0,
             startDateTime = start, endDateTime = end, gpsPoints = request.gpsPoints,
-        )), receivedAt)
+        )) }
+        items.save(userId, record.id, segments, receivedAt)
         endService.end(RunningRecordUpdateDto(
             userId = userId, runningRecordId = record.id,
             distance = request.distance, durationSec = request.durationSec,
@@ -67,6 +79,16 @@ class CompletedRunningService(
         // MariaDB DATETIME bounds also keep epoch-to-millisecond conversion safe.
         validation.metrics(request.startTimestamp in 0..253402300799 && request.endTimestamp in 0..253402300799)
         check(request.gpsPoints.size <= 100000)
+        check(request.items.size <= 10000)
+        if (request.items.isNotEmpty()) {
+            check(request.items.sumOf { it.distance.toLong() } == request.distance.toLong())
+            check(request.items.sumOf { it.durationSec } == request.durationSec)
+            request.items.forEachIndexed { index, item ->
+                check(item.orderIndex.toInt() == index)
+                check(item.startTimestamp >= (request.items.getOrNull(index - 1)?.endTimestamp ?: request.startTimestamp))
+                check(item.endTimestamp <= request.endTimestamp)
+            }
+        }
         validation.metrics(request.cadence in 0..255 && request.heartRate in 0..255)
         validation.validate(Instant.ofEpochSecond(request.startTimestamp).atOffset(ZoneOffset.UTC),
             Instant.ofEpochSecond(request.endTimestamp).atOffset(ZoneOffset.UTC),

@@ -20,6 +20,29 @@ import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.anyList
 
 class CompletedRunningServiceTest {
+    @Test
+    fun `completed run saves distinct segment sensors while retaining workout totals`() {
+        val saved = mutableListOf<com.example.running.domain.running.entity.RunningRecordItem>()
+        doAnswer { call -> saved.addAll(call.getArgument<List<com.example.running.domain.running.entity.RunningRecordItem>>(0)); null }
+            .`when`(itemRepository).saveInBatch(anyList())
+        val record = RunningRecord(id = 10, user = com.example.running.domain.user.entity.User(1),
+            startDatetime = java.time.Instant.ofEpochSecond(request.startTimestamp).atOffset(java.time.ZoneOffset.UTC),
+            endDatetime = java.time.Instant.ofEpochSecond(request.endTimestamp).atOffset(java.time.ZoneOffset.UTC))
+        `when`(records.saveAndFlush(org.mockito.ArgumentMatchers.any(RunningRecord::class.java))).thenReturn(record)
+        `when`(records.findOwnedForUpdate(10, 1)).thenReturn(record)
+        `when`(itemRepository.findAllByRunningRecord_IdOrderByOrderIndexAsc(10)).thenReturn(emptyList())
+        `when`(points.getOrCreateByUserId(1)).thenReturn(UserPoint(userId = 1))
+        val first = com.example.running.domain.running.controller.dto.ImportRunningRecordItemRequest(
+            1000, 300, 160, 130, orderIndex = 0, startTimestamp = request.startTimestamp, endTimestamp = request.startTimestamp + 300)
+        val second = com.example.running.domain.running.controller.dto.ImportRunningRecordItemRequest(
+            1000, 250, 180, 150, orderIndex = 1, startTimestamp = request.startTimestamp + 300, endTimestamp = request.endTimestamp)
+        service.complete(1, request.copy(distance = 2000, items = listOf(first, second)))
+        assertEquals(listOf<Short>(130, 150), saved.map { it.heartRate })
+        assertEquals(listOf<Short>(160, 180), saved.map { it.cadence })
+        assertEquals(2000, record.distance)
+        assertEquals(140.toShort(), record.heartRate)
+    }
+
     private val records = mock(RunningRecordRepository::class.java)
     private val itemRepository = mock(RunningRecordItemRepository::class.java)
     private val configurations = mock(UserConfigurationService::class.java)
@@ -58,6 +81,8 @@ class CompletedRunningServiceTest {
         assertTrue(record.isEnd)
         assertNull(record.shoe)
         val segment = savedItems.single()
+        assertEquals(0.toShort(), segment.heartRate)
+        assertEquals(0.toShort(), segment.cadence)
         assertEquals(1790813400999, RunningRecordItemGpsCodec.decode(segment.gpsPointsJson).single().timestampMs)
         record.distance = 2000
         `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.APPLE_WATCH, request.sessionId)).thenReturn(record)
@@ -81,6 +106,16 @@ class CompletedRunningServiceTest {
         assertEquals("DUPLICATE", service.complete(1, request.copy(distance = 0, endTimestamp = request.startTimestamp, durationSec = 0, gpsPoints = emptyList())).status)
         assertThrows(com.example.running.exception.RunningValidationException::class.java) { service.complete(1, request.copy(cadence = 256)) }
         assertThrows(com.example.running.exception.RunningValidationException::class.java) { service.complete(1, request.copy(heartRate = 256)) }
+    }
+
+    @Test
+    fun `inconsistent segment totals reject before any record is saved`() {
+        val item = com.example.running.domain.running.controller.dto.ImportRunningRecordItemRequest(
+            1000, 300, 160, 130, orderIndex = 0, startTimestamp = request.startTimestamp, endTimestamp = request.endTimestamp)
+        assertThrows(com.example.running.exception.RunningValidationException::class.java) {
+            service.complete(1, request.copy(items = listOf(item)))
+        }
+        verifyNoInteractions(records, itemRepository)
     }
 
     @Test

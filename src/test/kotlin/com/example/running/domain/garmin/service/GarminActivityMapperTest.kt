@@ -8,6 +8,23 @@ import org.junit.jupiter.api.Test
 import kotlin.test.*
 
 class GarminActivityMapperTest {
+    @Test
+    fun `detail retains interval heart rate and cadence instead of summary averages`() {
+        val activity = detail() as com.fasterxml.jackson.databind.node.ObjectNode
+        activity.set<com.fasterxml.jackson.databind.JsonNode>("samples", json.readTree("""[
+          {"startTimeInSeconds":1792800000,"timerDurationInSeconds":0,"totalDistanceInMeters":0},
+          {"startTimeInSeconds":1792800300,"timerDurationInSeconds":300,"totalDistanceInMeters":1000,
+           "heartRate":130,"stepsPerMinute":160},
+          {"startTimeInSeconds":1792800600,"timerDurationInSeconds":600,"totalDistanceInMeters":2000,
+           "heartRate":150,"stepsPerMinute":180}
+        ]"""))
+        val record = mapper.map(activity)!!.record
+        assertEquals(listOf<Short>(130, 150), record.items.map { it.heartRate })
+        assertEquals(listOf<Short>(160, 180), record.items.map { it.cadence })
+        assertEquals(listOf(1000, 1000), record.items.map { it.distance })
+        assertEquals(145.toShort(), record.heartRate)
+    }
+
     private val json = jacksonObjectMapper()
     private val mapper = GarminActivityMapper()
     private fun detail(type: String = "RUNNING", manual: Boolean = false) = json.readTree("""{

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import jakarta.servlet.Filter
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.mockito.Mockito.*
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -68,6 +69,21 @@ class CompletedRunningHttpTest {
             .contentType("application/json").content(body))
             .andExpect(status().isOk).andExpect(jsonPath("$.runningRecordId").value(42))
             .andExpect(jsonPath("$.status").value("CREATED"))
+    }
+    @Test fun `optional interval JSON reaches the service without changing the receipt contract`() {
+        val fallback = jacksonObjectMapper().readValue(body, com.example.running.domain.running.controller.dto.CompletedRunningRequest::class.java)
+        doAnswer { call ->
+            val request = call.getArgument<com.example.running.domain.running.controller.dto.CompletedRunningRequest>(1)
+            assertEquals(listOf<Short>(130, 150), request.items.map { it.heartRate })
+            assertEquals(listOf<Short>(160, 180), request.items.map { it.cadence })
+            CompletedRunningResponse(request.sessionId, 42, "CREATED")
+        }.`when`(service).complete(eq(7L), org.mockito.ArgumentMatchers.any() ?: fallback, eq(receivedAt) ?: receivedAt)
+        val intervals = ""","items":[
+          {"distance":750,"durationSec":275,"heartRate":130,"cadence":160,"orderIndex":0,"startTimestamp":1000,"endTimestamp":1300},
+          {"distance":750,"durationSec":275,"heartRate":150,"cadence":180,"orderIndex":1,"startTimestamp":1300,"endTimestamp":1600}]}"""
+        mvc.perform(post("/api/v1/running/completed-records").header("Authorization", "Bearer user")
+            .requestAttr("running.receivedAt", receivedAt).contentType("application/json").content(body.dropLast(1) + intervals))
+            .andExpect(status().isOk).andExpect(jsonPath("$.runningRecordId").value(42))
     }
     @Test fun `foreign owner and transient persistence failure retain distinct sanitized statuses`() {
         val request = jacksonObjectMapper().readValue(body, com.example.running.domain.running.controller.dto.CompletedRunningRequest::class.java)

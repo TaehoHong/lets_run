@@ -17,6 +17,7 @@ data class CompletedRunningRequest(
     @JsonSetter(nulls = Nulls.FAIL) val heartRate: Int,
     @JsonSetter(nulls = Nulls.FAIL) val calorie: Int,
     @JsonSetter(nulls = Nulls.FAIL) val gpsPoints: List<RunningRecordItemGpsPointDto>,
+    val items: List<ImportRunningRecordItemRequest> = emptyList(),
 )
 
 data class CompletedRunningResponse(val sessionId: String, val runningRecordId: Long, val status: String)

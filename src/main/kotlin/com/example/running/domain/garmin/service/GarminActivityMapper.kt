@@ -68,22 +68,72 @@ class GarminActivityMapper {
                 calorie = metric(summary, "activeKilocalories").roundToInt(),
                 startTimestamp = start,
                 endTimestamp = end,
-                items = if (points.isEmpty()) emptyList() else listOf(
+                items = intervalItems(samples, points, start, end, distance, duration).ifEmpty { if (points.isEmpty()) emptyList() else listOf(
                     ImportRunningRecordItemRequest(
                         distance,
                         duration,
-                        cadence,
-                        heartRate,
-                        shortMetric(summary, "minHeartRateInBeatsPerMinute"),
-                        shortMetric(summary, "maxHeartRateInBeatsPerMinute"),
+                        0,
+                        0,
+                        0,
+                        0,
                         0,
                         start,
                         end,
                         points,
                     )
-                ),
+                ) },
             )
         )
+    }
+
+    private fun intervalItems(samples: List<JsonNode>, points: List<RunningRecordItemGpsPointDto>,
+        start: Long, end: Long, distance: Int, duration: Long): List<ImportRunningRecordItemRequest> {
+        if (samples.isEmpty() || samples.any { !it.path("totalDistanceInMeters").isNumber || !it.path("timerDurationInSeconds").isNumber }) return emptyList()
+        val result = mutableListOf<ImportRunningRecordItemRequest>()
+        var previousDistance = 0; var previousDuration = 0L; var previousTime = start
+        var itemDistance = 0; var itemDuration = 0L; var itemStart = start
+        var heartSum = 0.0; var heartWeight = 0L; var cadenceSum = 0.0; var cadenceWeight = 0L
+        var routeIndex = 0
+        fun append(meters: Int, active: Long, time: Long, heart: Short, cadence: Short) {
+            val route = mutableListOf<RunningRecordItemGpsPointDto>()
+            while (routeIndex < points.size && (points[routeIndex].timestampMs < time * 1000 || time == end)) {
+                route.add(points[routeIndex++])
+            }
+            result.add(ImportRunningRecordItemRequest(meters, active, cadence, heart, orderIndex = result.size.toShort(),
+                startTimestamp = itemStart, endTimestamp = time, gpsPoints = route))
+            itemStart = time
+        }
+        samples.forEach { sample ->
+            val time = seconds(sample, "startTimeInSeconds")
+            val active = metric(sample, "timerDurationInSeconds").toLong()
+            val meters = metric(sample, "totalDistanceInMeters").roundToInt()
+            if (time < previousTime || time !in start..end || active < previousDuration || active > duration ||
+                meters < previousDistance || meters > distance || active - previousDuration > time - previousTime) invalid()
+            val delta = active - previousDuration
+            val heart = shortMetric(sample, "heartRate").toInt()
+            val cadence = shortMetric(sample, "stepsPerMinute").toInt()
+            if (heart > 0) { heartSum += heart * delta.toDouble(); heartWeight += delta }
+            if (cadence > 0) { cadenceSum += cadence * delta.toDouble(); cadenceWeight += delta }
+            itemDistance += meters - previousDistance; itemDuration += delta
+            previousDistance = meters; previousDuration = active; previousTime = time
+            if (itemDuration >= 10 && itemDistance > 0) {
+                append(itemDistance, itemDuration, time,
+                    (if (heartWeight > 0) (heartSum / heartWeight).roundToInt() else 0).toShort(),
+                    (if (cadenceWeight > 0) (cadenceSum / cadenceWeight).roundToInt() else 0).toShort())
+                itemDistance = 0; itemDuration = 0
+                heartSum = 0.0; heartWeight = 0; cadenceSum = 0.0; cadenceWeight = 0
+            }
+        }
+        itemDistance += distance - previousDistance; itemDuration += duration - previousDuration
+        if (itemDuration > 0) {
+            append(itemDistance, itemDuration, end,
+                (if (heartWeight > 0 && duration == previousDuration) (heartSum / heartWeight).roundToInt() else 0).toShort(),
+                (if (cadenceWeight > 0 && duration == previousDuration) (cadenceSum / cadenceWeight).roundToInt() else 0).toShort())
+        } else if (itemDistance > 0) {
+            // A distance-only tail has no sensor interval that can be assigned honestly.
+            return emptyList()
+        }
+        return result
     }
 
     private fun seconds(node: JsonNode, field: String): Long {
