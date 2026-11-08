@@ -29,7 +29,7 @@ class RunningImportAcceptanceTest {
     private val validation = RunningValidationService()
     private val acceptance = RunningAcceptanceService(records, items, configuration, points, league,
         mock(NotificationService::class.java), mock(RunningRecordService::class.java), validation)
-    private val service = RunningImportService(records, items, configuration, acceptance, validation, mock(RunningRecordService::class.java))
+    private val service = RunningImportService(records, items, configuration, acceptance, validation, mock(RunningRecordService::class.java), mock(NotificationService::class.java))
     private val start = OffsetDateTime.parse("2026-10-01T00:00:00Z")
     private fun request(method: String?) = ImportRunningRecordRequest("health-id", 2000, 600,
         startTimestamp = start.toEpochSecond(), endTimestamp = start.plusMinutes(10).toEpochSecond(),

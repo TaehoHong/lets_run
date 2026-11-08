@@ -11,11 +11,12 @@ data class PushJob(
     val id: Long, val notificationId: Long, val userId: Long, val deviceId: Long, val version: Long,
     val sourceKey: String, val type: NotificationType, val token: String?, val language: String,
     val ticketId: String?, val attemptCount: Int, val created: Instant, val validBinding: Boolean,
-    val configuration: NotificationConfiguration, val anchor: Instant?,
+    val configuration: NotificationConfiguration, val anchor: Instant?, val ticketCreated: Instant? = null,
 )
 data class PushOutcome(
     val id: Long, val lease: String, val status: String, val next: Instant,
-    val error: String? = null, val ticket: String? = null,
+    val error: String? = null, val ticket: String? = null, val clearTicket: Boolean = false,
+    val ticketCreated: Instant? = null,
 )
 
 @Repository
@@ -39,11 +40,13 @@ class NotificationPushRepository(private val jdbc: JdbcTemplate) {
         val rows = candidates.joinToString(" UNION ALL ") { "SELECT ? AS id, ? AS expected_status" }
         jdbc.update("""
             UPDATE notification_push p JOIN ($rows) requested ON requested.id = p.id
-            SET p.status = 'SENDING', p.lease_token = ?, p.locked_until_datetime = ?
+            SET p.status = 'SENDING', p.lease_token = ?, p.locked_until_datetime = ?,
+                p.ticket_created_datetime = CASE WHEN p.provider_ticket_id IS NULL THEN NULL
+                    ELSE COALESCE(p.ticket_created_datetime, ?) END
             WHERE p.status = requested.expected_status AND p.status IN ('PENDING', 'RECEIPT_PENDING')
                 AND p.next_attempt_datetime <= ?
         """.trimIndent(), *(candidates.flatMap { listOf(it.id, it.status) } +
-            listOf(lease, utc(now.plusSeconds(60)), utc(now))).toTypedArray<Any?>())
+            listOf(lease, utc(now.plusSeconds(60)), utc(now), utc(now))).toTypedArray<Any?>())
     }
 
     fun claimed(ids: List<Long>, lease: String, now: Instant): List<PushJob> {
@@ -71,7 +74,7 @@ class NotificationPushRepository(private val jdbc: JdbcTemplate) {
             rs.getString("provider_ticket_id"), rs.getInt("attempt_count"), instant(rs, "created_datetime")!!,
             rs.getBoolean("valid_binding"), NotificationConfiguration(rs.getBoolean("push_enabled"),
                 rs.getBoolean("league_push_enabled"), rs.getBoolean("reminder_push_enabled"),
-                rs.getBoolean("notice_push_enabled")), instant(rs, "anchor_datetime")) },
+                rs.getBoolean("notice_push_enabled")), instant(rs, "anchor_datetime"), instant(rs, "ticket_created_datetime")) },
             *(listOf(utc(now)) + ids + listOf(lease, utc(now))).toTypedArray<Any?>())
     }
 
@@ -119,7 +122,7 @@ class NotificationPushRepository(private val jdbc: JdbcTemplate) {
         if (outcomes.isEmpty()) return
         require(outcomes.size <= 100)
         val rows = outcomes.joinToString(" UNION ALL ") {
-            "SELECT ? AS id, ? AS lease_token, ? AS status, ? AS next_attempt, ? AS error_code, ? AS ticket_id"
+            "SELECT ? AS id, ? AS lease_token, ? AS status, ? AS next_attempt, ? AS error_code, ? AS ticket_id, ? AS clear_ticket, ? AS ticket_created"
         }
         // Only an owned result row can join a device for invalidation. Both updates are one atomic statement.
         jdbc.update("""
@@ -127,13 +130,16 @@ class NotificationPushRepository(private val jdbc: JdbcTemplate) {
             LEFT JOIN user_device d ON d.id = p.user_device_id AND d.binding_version = p.binding_version
                 AND outcome.status = 'FAILED' AND outcome.error_code = 'DeviceNotRegistered'
             SET p.status = outcome.status, p.next_attempt_datetime = outcome.next_attempt,
-                p.error_code = outcome.error_code, p.provider_ticket_id = COALESCE(outcome.ticket_id, p.provider_ticket_id),
+                p.error_code = outcome.error_code, p.provider_ticket_id = CASE WHEN outcome.clear_ticket = 1 THEN NULL
+                    ELSE COALESCE(outcome.ticket_id, p.provider_ticket_id) END,
+                p.ticket_created_datetime = CASE WHEN outcome.clear_ticket = 1 THEN NULL
+                    WHEN outcome.ticket_id IS NOT NULL THEN outcome.ticket_created ELSE p.ticket_created_datetime END,
                 p.locked_until_datetime = NULL, p.lease_token = NULL,
                 d.is_enabled = 0, d.push_token = NULL, d.binding_version = d.binding_version + 1
             WHERE p.status = 'SENDING' AND p.lease_token = outcome.lease_token
                 AND p.locked_until_datetime > UTC_TIMESTAMP()
         """.trimIndent(), *outcomes.flatMap {
-            listOf(it.id, it.lease, it.status, utc(it.next), it.error, it.ticket)
+            listOf(it.id, it.lease, it.status, utc(it.next), it.error, it.ticket, it.clearTicket, it.ticketCreated?.let(::utc))
         }.toTypedArray<Any?>())
     }
 }

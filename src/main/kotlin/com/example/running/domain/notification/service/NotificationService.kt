@@ -53,20 +53,27 @@ class NotificationService(private val repository: NotificationRepository) {
 
     @Transactional
     fun configure(userId: Long, value: NotificationConfiguration): NotificationConfiguration {
-        requireActive(userId)
+        requireActive(userId, forUpdate = true)
         if (value.pushEnabled && value.timezone == null) badRequest("Timezone is required")
-        value.timezone?.let {
-            try { ZoneId.of(it) } catch (_: DateTimeException) { badRequest("Invalid timezone") }
-        }
+        value.timezone?.let(::validateTimezone)
         repository.saveConfiguration(userId, value)
         return value
     }
 
     @Transactional
+    fun patchConfiguration(userId: Long, value: NotificationConfigurationPatch): NotificationConfiguration {
+        requireActive(userId, forUpdate = true)
+        value.timezone?.let(::validateTimezone)
+        repository.patchConfiguration(userId, value)
+        val saved = repository.configuration(userId)
+        if (saved.pushEnabled && saved.timezone == null) badRequest("Timezone is required")
+        return saved
+    }
+
+    @Transactional
     fun updateTimezone(userId: Long, timezone: String) {
-        requireActive(userId)
-        if (timezone.isBlank() || timezone.length > 64) badRequest("Invalid timezone")
-        try { ZoneId.of(timezone) } catch (_: DateTimeException) { badRequest("Invalid timezone") }
+        requireActive(userId, forUpdate = true)
+        validateTimezone(timezone)
         repository.updateTimezone(userId, timezone)
     }
 
@@ -139,12 +146,17 @@ class NotificationService(private val repository: NotificationRepository) {
     @Transactional
     fun purgeExpired(now: Instant) = repository.expiredIds(now).forEach(repository::deleteExpired)
 
-    private fun requireActive(userId: Long) {
-        if (!repository.isActive(userId)) throw ApiException("Account unavailable", HttpStatus.FORBIDDEN)
+    private fun requireActive(userId: Long, forUpdate: Boolean = false) {
+        if (!repository.isActive(userId, forUpdate)) throw ApiException("Account unavailable", HttpStatus.FORBIDDEN)
     }
 
     private fun requireAdmin(userId: Long) {
         if (!repository.isAdmin(userId)) throw ApiException("Administrator required", HttpStatus.FORBIDDEN)
+    }
+
+    private fun validateTimezone(timezone: String) {
+        if (timezone.isBlank() || timezone.length > 64) badRequest("Invalid timezone")
+        try { ZoneId.of(timezone) } catch (_: DateTimeException) { badRequest("Invalid timezone") }
     }
 
     private fun badRequest(message: String): Nothing = throw ApiException(message, HttpStatus.BAD_REQUEST)

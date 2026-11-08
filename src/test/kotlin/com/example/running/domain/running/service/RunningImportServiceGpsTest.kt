@@ -1,5 +1,6 @@
 package com.example.running.domain.running.service
 
+import com.example.running.domain.notification.service.NotificationService
 import com.example.running.domain.running.controller.dto.ImportRunningBatchRequest
 import com.example.running.domain.running.controller.dto.ImportRunningRecordItemRequest
 import com.example.running.domain.running.controller.dto.ImportRunningRecordRequest
@@ -27,7 +28,7 @@ class RunningImportServiceGpsTest {
         val items = mock(RunningRecordItemRepository::class.java)
         val configuration = mock(UserConfigurationService::class.java)
         val service = RunningImportService(records, items, configuration, mock(RunningAcceptanceService::class.java),
-            RunningValidationService(), mock(RunningRecordService::class.java))
+            RunningValidationService(), mock(RunningRecordService::class.java), mock(NotificationService::class.java))
         `when`(configuration.getOrCreateForUpdate(1)).thenReturn(UserConfiguration(1, true))
         `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.HEALTH, "intervals"))
             .thenReturn(RunningRecord(id = 10, user = User(id = 1), source = RunningRecordSource.HEALTH))
@@ -52,7 +53,7 @@ class RunningImportServiceGpsTest {
         val configuration = mock(UserConfigurationService::class.java)
         val validation = RunningValidationService()
         val acceptance = mock(RunningAcceptanceService::class.java)
-        val service = RunningImportService(records, items, configuration, acceptance, validation, mock(RunningRecordService::class.java))
+        val service = RunningImportService(records, items, configuration, acceptance, validation, mock(RunningRecordService::class.java), mock(NotificationService::class.java))
         val existing = RunningRecord(id = 10, user = User(id = 1), source = RunningRecordSource.HEALTH)
         `when`(configuration.getOrCreateForUpdate(1)).thenReturn(UserConfiguration(1, true))
         `when`(records.findByUserIdAndSourceAndExternalId(1, RunningRecordSource.HEALTH, "workout")).thenReturn(existing)

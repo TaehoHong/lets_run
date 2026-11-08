@@ -11,7 +11,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 
 data class PushProviderResult(val ticket: String? = null, val error: String? = null, val pending: Boolean = false)
-data class PushMessage(val token: String, val title: String, val body: String, val notificationId: Long)
+data class PushMessage(val token: String, val title: String, val body: String, val notificationId: Long, val userId: Long)
 
 @Component
 class ExpoPushClient(
@@ -27,7 +27,8 @@ class ExpoPushClient(
         return request("send", messages.map { message ->
             mapOf("to" to message.token, "title" to message.title.take(100), "body" to message.body.take(200),
                 "sound" to "default", "channelId" to "activity",
-                "data" to mapOf("notificationId" to message.notificationId.toString()))
+                "data" to mapOf("notificationId" to message.notificationId.toString(),
+                    "recipientUserId" to message.userId.toString()))
         }, failed) { data ->
             // Expo tickets correspond to message order only when the complete array is valid.
             if (!data.isArray || data.size() != messages.size) failed("PROVIDER_RESPONSE")
@@ -75,7 +76,7 @@ class ExpoPushClient(
                     if (root == null || !root.isObject || !root.hasNonNull("data")) failed("PROVIDER_RESPONSE")
                     else decode(root.path("data"))
                 }
-                429 -> failed("MessageRateExceeded")
+                429 -> failed("PROVIDER_RATE_LIMITED")
                 401, 403 -> failed("InvalidCredentials")
                 else -> failed("PROVIDER_UNAVAILABLE")
             }

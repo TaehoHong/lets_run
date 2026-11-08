@@ -26,6 +26,14 @@ data class NotificationConfiguration(
     }
 }
 
+data class NotificationConfigurationPatch(
+    val pushEnabled: Boolean? = null,
+    val leaguePushEnabled: Boolean? = null,
+    val reminderPushEnabled: Boolean? = null,
+    val noticePushEnabled: Boolean? = null,
+    val timezone: String? = null,
+)
+
 data class ReminderState(val userId: Long, val anchor: Instant, val next: Instant)
 data class DeviceBinding(val id: Long, val version: Long)
 data class InboxNotification(
@@ -44,9 +52,10 @@ class NotificationRepository(private val jdbc: JdbcTemplate) {
         "SELECT code FROM language WHERE is_enabled = 1 ORDER BY id", { rs, _ -> rs.getString(1) }
     )
 
-    fun isActive(userId: Long): Boolean = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM user WHERE id = ? AND is_enabled = 1 AND is_deleted = 0", Int::class.java, userId
-    ) == 1
+    fun isActive(userId: Long, forUpdate: Boolean = false): Boolean = jdbc.query(
+        "SELECT id FROM user WHERE id = ? AND is_enabled = 1 AND is_deleted = 0${if (forUpdate) " FOR UPDATE" else ""}",
+        { rs, _ -> rs.getLong(1) }, userId
+    ).isNotEmpty()
 
     fun isAdmin(userId: Long): Boolean = jdbc.queryForObject(
         "SELECT COUNT(*) FROM user WHERE id = ? AND is_enabled = 1 AND is_deleted = 0 AND authority_type = 'A'",
@@ -69,6 +78,20 @@ class NotificationRepository(private val jdbc: JdbcTemplate) {
                 timezone = VALUES(timezone)
         """.trimIndent(), userId, value.pushEnabled, value.leaguePushEnabled, value.reminderPushEnabled,
             value.noticePushEnabled, value.timezone)
+    }
+
+    fun patchConfiguration(userId: Long, value: NotificationConfigurationPatch) {
+        jdbc.update("""
+            INSERT INTO user_notification_configuration
+                (user_id, push_enabled, league_push_enabled, reminder_push_enabled, notice_push_enabled, timezone)
+            VALUES (?, COALESCE(?, 0), COALESCE(?, 1), COALESCE(?, 1), COALESCE(?, 1), ?)
+            ON DUPLICATE KEY UPDATE push_enabled = COALESCE(?, push_enabled),
+                league_push_enabled = COALESCE(?, league_push_enabled),
+                reminder_push_enabled = COALESCE(?, reminder_push_enabled),
+                notice_push_enabled = COALESCE(?, notice_push_enabled), timezone = COALESCE(?, timezone)
+        """.trimIndent(), userId, value.pushEnabled, value.leaguePushEnabled, value.reminderPushEnabled,
+            value.noticePushEnabled, value.timezone, value.pushEnabled, value.leaguePushEnabled,
+            value.reminderPushEnabled, value.noticePushEnabled, value.timezone)
     }
 
     fun updateTimezone(userId: Long, timezone: String) {

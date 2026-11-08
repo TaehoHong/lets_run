@@ -3,6 +3,8 @@ package com.example.running.domain.notification.service
 import com.example.running.domain.notification.repository.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 import java.time.Instant
@@ -63,6 +65,114 @@ class NotificationPushWorkerTest {
     }
 
     @Test
+    fun `a new ticket stores the response time rather than the old queue creation time`() {
+        noticeJob()
+        `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(ticket = "new-ticket")))
+        val before = Instant.now()
+
+        worker.process(candidates)
+
+        assertEquals("RECEIPT_PENDING", finished.single().status)
+        assertEquals("new-ticket", finished.single().ticket)
+        val ticketCreated = assertNotNull(finished.single().ticketCreated)
+        assertTrue(ticketCreated >= before)
+        assertTrue(ticketCreated <= Instant.now())
+    }
+
+    @Test
+    fun `a recently issued ticket from an old queue keeps waiting for its receipt`() {
+        val now = Instant.now()
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(listOf(job.copy(
+            ticketId = "recent-ticket", created = now.minusSeconds(7 * 86400), ticketCreated = now.minusSeconds(900))))
+        `when`(provider.receipts(listOf("recent-ticket")))
+            .thenReturn(mapOf("recent-ticket" to PushProviderResult(pending = true)))
+
+        worker.process(candidates)
+
+        assertEquals("RECEIPT_PENDING", finished.single().status)
+        assertFalse(finished.single().clearTicket)
+        verify(provider, never()).send(anyList())
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["PROVIDER_UNAVAILABLE", "PROVIDER_RATE_LIMITED", "INTERRUPTED"])
+    fun `an old queue with a recent ticket retains receipt transport retries`(error: String) {
+        val now = Instant.now()
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(listOf(job.copy(
+            ticketId = "recent-ticket", created = now.minusSeconds(7 * 86400), ticketCreated = now.minusSeconds(900))))
+        `when`(provider.receipts(listOf("recent-ticket")))
+            .thenReturn(mapOf("recent-ticket" to PushProviderResult(error = error)))
+
+        worker.process(candidates)
+
+        assertEquals("RECEIPT_PENDING", finished.single().status)
+        assertEquals(error, finished.single().error)
+        verify(provider, never()).send(anyList())
+    }
+
+    @Test
+    fun `a receipt that remains unavailable after its ticket window is terminal`() {
+        `when`(queue.claimed(anyList(), anyString(), anyInstant())).thenReturn(listOf(job.copy(
+            ticketId = "expired-ticket", ticketCreated = Instant.EPOCH)))
+        `when`(provider.receipts(listOf("expired-ticket")))
+            .thenReturn(mapOf("expired-ticket" to PushProviderResult(pending = true)))
+
+        worker.process(candidates)
+
+        assertEquals("FAILED", finished.single().status)
+        assertEquals("RECEIPT_UNAVAILABLE", finished.single().error)
+        verify(provider, never()).send(anyList())
+    }
+
+    @Test
+    fun `receipt rate limit schedules a new send with exponential backoff`() {
+        `when`(queue.claimed(anyList(), anyString(), anyInstant()))
+            .thenReturn(listOf(job.copy(ticketId = "ticket", attemptCount = 2)))
+        `when`(provider.receipts(listOf("ticket")))
+            .thenReturn(mapOf("ticket" to PushProviderResult(error = "MessageRateExceeded")))
+        val before = Instant.now()
+
+        worker.process(candidates)
+
+        assertEquals("PENDING", finished.single().status)
+        assertEquals("MessageRateExceeded", finished.single().error)
+        assertTrue(finished.single().clearTicket)
+        assertTrue(finished.single().next >= before.plusSeconds(60))
+        assertTrue(finished.single().next <= Instant.now().plusSeconds(60))
+        verify(provider, never()).send(anyList())
+    }
+
+    @Test
+    fun `receipt rate limit after the fifth send is terminal`() {
+        `when`(queue.claimed(anyList(), anyString(), anyInstant()))
+            .thenReturn(listOf(job.copy(ticketId = "ticket", attemptCount = 5)))
+        `when`(provider.receipts(listOf("ticket")))
+            .thenReturn(mapOf("ticket" to PushProviderResult(error = "MessageRateExceeded")))
+
+        worker.process(candidates)
+
+        assertEquals("FAILED", finished.single().status)
+        assertEquals("MessageRateExceeded", finished.single().error)
+        assertFalse(finished.single().clearTicket)
+        verify(provider, never()).send(anyList())
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["PROVIDER_UNAVAILABLE", "PROVIDER_RATE_LIMITED", "INTERRUPTED"])
+    fun `receipt transport failure keeps polling the same ticket without resending`(error: String) {
+        `when`(queue.claimed(anyList(), anyString(), anyInstant()))
+            .thenReturn(listOf(job.copy(ticketId = "ticket", attemptCount = 2, ticketCreated = Instant.now())))
+        `when`(provider.receipts(listOf("ticket")))
+            .thenReturn(mapOf("ticket" to PushProviderResult(error = error)))
+
+        worker.process(candidates)
+
+        assertEquals("RECEIPT_PENDING", finished.single().status)
+        assertFalse(finished.single().clearTicket)
+        verify(provider, never()).send(anyList())
+    }
+
+    @Test
     fun `lost lease before send never contacts provider`() {
         noticeJob()
         `when`(queue.beginDelivery(anyList(), anyString(), anyString())).thenReturn(emptySet())
@@ -70,15 +180,16 @@ class NotificationPushWorkerTest {
         verifyNoInteractions(provider)
     }
 
-    @Test
-    fun `transient provider failure retries before fifth actual send`() {
+    @ParameterizedTest
+    @ValueSource(strings = ["PROVIDER_UNAVAILABLE", "PROVIDER_RATE_LIMITED"])
+    fun `transient provider failure retries before fifth actual send`(error: String) {
         noticeJob(attempts = 3)
-        `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(error = "PROVIDER_UNAVAILABLE")))
+        `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(error = error)))
         val before = Instant.now()
         worker.process(candidates, daytime)
-        verify(provider).send(listOf(PushMessage("ExpoPushToken[test]", "Notice", "Body", 2L)))
+        verify(provider).send(listOf(PushMessage("ExpoPushToken[test]", "Notice", "Body", 2L, 7L)))
         assertEquals("PENDING", finished.single().status)
-        assertEquals("PROVIDER_UNAVAILABLE", finished.single().error)
+        assertEquals(error, finished.single().error)
         assertTrue(finished.single().next >= before.plusSeconds(240))
         assertTrue(finished.single().next <= Instant.now().plusSeconds(240))
     }
@@ -88,7 +199,7 @@ class NotificationPushWorkerTest {
         noticeJob(attempts = 4)
         `when`(provider.send(anyList())).thenReturn(listOf(PushProviderResult(error = "PROVIDER_UNAVAILABLE")))
         worker.process(candidates, daytime)
-        verify(provider).send(listOf(PushMessage("ExpoPushToken[test]", "Notice", "Body", 2L)))
+        verify(provider).send(listOf(PushMessage("ExpoPushToken[test]", "Notice", "Body", 2L, 7L)))
         assertEquals("FAILED", finished.single().status)
         assertEquals("PROVIDER_UNAVAILABLE", finished.single().error)
     }

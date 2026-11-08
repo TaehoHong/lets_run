@@ -97,7 +97,8 @@ class GarminDatabaseTest {
             point_eligible TINYINT(1) NOT NULL DEFAULT 0
         )""")
         jdbc.update("INSERT INTO user VALUES (7), (8)")
-        Flyway.configure().dataSource(source).baselineOnMigrate(true).baselineVersion("1.6.0")
+        // This partial legacy fixture covers Garmin/import migrations through 1.10.0.
+        Flyway.configure().dataSource(source).baselineOnMigrate(true).baselineVersion("1.6.0").target("1.10.0")
             .locations("filesystem:src/main/resources/db/migration").load().migrate()
         context = AnnotationConfigApplicationContext().apply {
             beanFactory.registerSingleton("jdbcTemplate", jdbc)
@@ -479,7 +480,7 @@ class GarminDatabaseTest {
 
     @Test
     fun `failure storing a later event rolls back the whole delivery and a retry stores all events`() {
-        val failingRepository = spy(repository)
+        val failingRepository = spy(GarminRepository(jdbc))
         var writes = 0
         doAnswer { invocation ->
             writes += 1

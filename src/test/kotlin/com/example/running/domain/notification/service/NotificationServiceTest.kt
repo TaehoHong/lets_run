@@ -56,10 +56,42 @@ class NotificationServiceTest {
 
     @Test
     fun `enabling push needs a valid zone`() {
-        `when`(repository.isActive(7)).thenReturn(true)
+        `when`(repository.isActive(7, forUpdate = true)).thenReturn(true)
         assertFailsWith<ApiException> { service.configure(7, NotificationConfiguration(pushEnabled = true)) }
         assertFailsWith<ApiException> { service.configure(7, NotificationConfiguration(timezone = "invalid/zone")) }
         verify(repository, never()).saveConfiguration(anyLong(), any(NotificationConfiguration::class.java) ?: NotificationConfiguration())
+    }
+
+    @Test
+    fun `a partial preference change returns the merged configuration without replacing other preferences`() {
+        val change = NotificationConfigurationPatch(leaguePushEnabled = false)
+        val merged = NotificationConfiguration(pushEnabled = true, leaguePushEnabled = false,
+            reminderPushEnabled = false, timezone = "Asia/Seoul")
+        `when`(repository.isActive(7, forUpdate = true)).thenReturn(true)
+        `when`(repository.configuration(7)).thenReturn(merged)
+
+        assertEquals(merged, service.patchConfiguration(7, change))
+
+        verify(repository).patchConfiguration(7, change)
+        verify(repository, never()).saveConfiguration(anyLong(), any(NotificationConfiguration::class.java) ?: NotificationConfiguration())
+    }
+
+    @Test
+    fun `a partial update rejects an invalid timezone before changing preferences`() {
+        `when`(repository.isActive(7, forUpdate = true)).thenReturn(true)
+        assertEquals(400, assertFailsWith<ApiException> {
+            service.patchConfiguration(7, NotificationConfigurationPatch(pushEnabled = true, timezone = "invalid/zone"))
+        }.status.value())
+        verify(repository, never()).patchConfiguration(anyLong(), any(NotificationConfigurationPatch::class.java) ?: NotificationConfigurationPatch())
+    }
+
+    @Test
+    fun `a partial update cannot enable push without a saved timezone`() {
+        val change = NotificationConfigurationPatch(pushEnabled = true)
+        `when`(repository.isActive(7, forUpdate = true)).thenReturn(true)
+        `when`(repository.configuration(7)).thenReturn(NotificationConfiguration(pushEnabled = true))
+
+        assertEquals(400, assertFailsWith<ApiException> { service.patchConfiguration(7, change) }.status.value())
     }
 
     @Test

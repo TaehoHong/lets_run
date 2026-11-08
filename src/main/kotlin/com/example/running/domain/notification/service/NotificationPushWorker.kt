@@ -48,12 +48,13 @@ class NotificationPushWorker(
         if (sending.isNotEmpty()) {
             val results = provider.send(sending.map { job ->
                 val text = content.getValue(job.id)
-                PushMessage(job.token!!, text.title, text.body, job.notificationId)
+                PushMessage(job.token!!, text.title, text.body, job.notificationId, job.userId)
             })
             val completed = Instant.now()
             sending.zip(results).forEach { (job, result) ->
                 outcomes += when {
-                    result.ticket != null -> PushOutcome(job.id, deliveryLease, "RECEIPT_PENDING", completed.plusSeconds(900), ticket = result.ticket)
+                    result.ticket != null -> PushOutcome(job.id, deliveryLease, "RECEIPT_PENDING", completed.plusSeconds(900),
+                        ticket = result.ticket, ticketCreated = completed)
                     result.error in sendRetryErrors && job.attemptCount + 1 < 5 ->
                         PushOutcome(job.id, deliveryLease, "PENDING", completed.plusSeconds(30L shl job.attemptCount), result.error)
                     else -> PushOutcome(job.id, deliveryLease, "FAILED", completed, result.error ?: "PROVIDER_RESPONSE")
@@ -66,12 +67,16 @@ class NotificationPushWorker(
             val completed = Instant.now()
             polling.forEach { job ->
                 val result = results.getValue(job.ticketId!!)
+                val withinReceiptWindow = job.ticketCreated?.let { completed < it.plusSeconds(48 * 3600) } ?: false
                 outcomes += when {
-                    result.pending && completed < job.created.plusSeconds(48 * 3600) ->
+                    result.pending && withinReceiptWindow ->
                         PushOutcome(job.id, deliveryLease, "RECEIPT_PENDING", completed.plusSeconds(900))
                     result.pending -> PushOutcome(job.id, deliveryLease, "FAILED", completed, "RECEIPT_UNAVAILABLE")
                     result.error == null -> PushOutcome(job.id, deliveryLease, "PROVIDER_ACCEPTED", completed)
-                    result.error in receiptRetryErrors && completed < job.created.plusSeconds(48 * 3600) ->
+                    result.error == "MessageRateExceeded" && job.attemptCount < 5 ->
+                        PushOutcome(job.id, deliveryLease, "PENDING", completed.plusSeconds(30L shl (job.attemptCount - 1)),
+                            result.error, clearTicket = true)
+                    result.error in receiptRetryErrors && withinReceiptWindow ->
                         PushOutcome(job.id, deliveryLease, "RECEIPT_PENDING", completed.plusSeconds(900), result.error)
                     else -> PushOutcome(job.id, deliveryLease, "FAILED", completed, result.error)
                 }
@@ -80,6 +85,6 @@ class NotificationPushWorker(
         queue.finish(outcomes)
     }
 
-    private val sendRetryErrors = setOf("PROVIDER_UNAVAILABLE", "PROVIDER_RESPONSE", "MessageRateExceeded", "INTERRUPTED")
-    private val receiptRetryErrors = setOf("PROVIDER_UNAVAILABLE", "MessageRateExceeded", "INTERRUPTED")
+    private val sendRetryErrors = setOf("PROVIDER_UNAVAILABLE", "PROVIDER_RESPONSE", "PROVIDER_RATE_LIMITED", "MessageRateExceeded", "INTERRUPTED")
+    private val receiptRetryErrors = setOf("PROVIDER_UNAVAILABLE", "PROVIDER_RATE_LIMITED", "INTERRUPTED")
 }

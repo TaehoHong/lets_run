@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.CyclicBarrier
@@ -192,6 +193,127 @@ class NotificationDatabaseTest {
         assertFailsWith<com.example.running.exception.ApiException> { service.open(9, item.id, "ko") }
         assertNull(repository.inbox(7, "ko", null, 20, Instant.now()).single().readDatetime)
         assertNotNull(service.open(7, item.id, "ja").readDatetime)
+    }
+
+    @Test
+    fun `concurrent partial configuration changes preserve both device choices`() {
+        val service = NotificationService(repository)
+        repository.saveConfiguration(7, NotificationConfiguration(pushEnabled = true, timezone = "Asia/Seoul"))
+        val barrier = CyclicBarrier(2)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val league = executor.submit(Callable {
+                barrier.await()
+                transaction.execute { service.patchConfiguration(7, NotificationConfigurationPatch(leaguePushEnabled = false)) }
+            })
+            val reminder = executor.submit(Callable {
+                barrier.await()
+                transaction.execute { service.patchConfiguration(7, NotificationConfigurationPatch(reminderPushEnabled = false)) }
+            })
+            assertFalse(league.get()!!.leaguePushEnabled)
+            assertFalse(reminder.get()!!.reminderPushEnabled)
+            assertEquals(NotificationConfiguration(pushEnabled = true, leaguePushEnabled = false,
+                reminderPushEnabled = false, timezone = "Asia/Seoul"), repository.configuration(7))
+        } finally { executor.shutdownNow() }
+    }
+
+    @Test
+    fun `a concurrent preference patch and timezone sync preserve both changes`() {
+        val service = NotificationService(repository)
+        repository.saveConfiguration(7, NotificationConfiguration(pushEnabled = true, timezone = "Asia/Seoul"))
+        val barrier = CyclicBarrier(2)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val preference = executor.submit(Callable {
+                barrier.await()
+                transaction.execute { service.patchConfiguration(7, NotificationConfigurationPatch(leaguePushEnabled = false)) }
+            })
+            val timezone = executor.submit(Callable {
+                barrier.await()
+                transaction.execute { service.updateTimezone(7, "Asia/Tokyo") }
+            })
+            assertFalse(preference.get()!!.leaguePushEnabled)
+            timezone.get()
+            assertEquals(NotificationConfiguration(pushEnabled = true, leaguePushEnabled = false,
+                timezone = "Asia/Tokyo"), repository.configuration(7))
+        } finally { executor.shutdownNow() }
+    }
+
+    @Test
+    fun `partial opt in without a timezone rolls back the inserted configuration`() {
+        val service = NotificationService(repository)
+        assertFailsWith<com.example.running.exception.ApiException> {
+            transaction.execute { service.patchConfiguration(9, NotificationConfigurationPatch(pushEnabled = true)) }
+        }
+        assertEquals(NotificationConfiguration(), repository.configuration(9))
+        val saved = transaction.execute {
+            service.patchConfiguration(9, NotificationConfigurationPatch(pushEnabled = true, timezone = "Asia/Tokyo"))
+        }
+        assertEquals(NotificationConfiguration(pushEnabled = true, timezone = "Asia/Tokyo"), saved)
+    }
+
+    @Test
+    fun `retrying a rate limited receipt clears its ticket and counts only the next actual send`() {
+        val now = Instant.now().truncatedTo(ChronoUnit.SECONDS)
+        repository.saveConfiguration(7, NotificationConfiguration(pushEnabled = true, timezone = "Asia/Seoul"))
+        val id = repository.createNotification(7, NotificationType.NOTICE, "receipt-rate", null, null, now)
+        val device = repository.bindDevice(7, UUID.randomUUID().toString(), "ExpoPushToken[receipt-rate]", "IOS", repository.languageId("ko")!!)
+        repository.enqueue(id, device, now)
+        val candidate = queue.candidates(now).single()
+        queue.claim(listOf(candidate), "send", now)
+        val first = queue.claimed(listOf(candidate.id), "send", now).single()
+        assertEquals(setOf(candidate.id), queue.beginDelivery(listOf(first), "send", "sent"))
+        queue.finish(listOf(PushOutcome(candidate.id, "sent", "RECEIPT_PENDING", now, ticket = "ticket", ticketCreated = now)))
+
+        queue.claim(queue.candidates(now), "receipt", now)
+        val receipt = queue.claimed(listOf(candidate.id), "receipt", now).single()
+        assertEquals(now, receipt.ticketCreated)
+        assertEquals(1, receipt.attemptCount)
+        assertEquals(setOf(candidate.id), queue.beginDelivery(listOf(receipt), "receipt", "polled"))
+        queue.finish(listOf(PushOutcome(candidate.id, "polled", "PENDING", now,
+            error = "MessageRateExceeded", clearTicket = true)))
+
+        queue.claim(queue.candidates(now), "retry", now)
+        val retry = queue.claimed(listOf(candidate.id), "retry", now).single()
+        assertNull(retry.ticketId)
+        assertNull(retry.ticketCreated)
+        assertEquals(1, retry.attemptCount)
+        assertEquals(setOf(candidate.id), queue.beginDelivery(listOf(retry), "retry", "retried"))
+        assertEquals(2, jdbc.queryForObject("SELECT attempt_count FROM notification_push WHERE id = ?", Int::class.java, candidate.id))
+        val retriedAt = now.plusSeconds(5)
+        queue.finish(listOf(PushOutcome(candidate.id, "retried", "RECEIPT_PENDING", retriedAt,
+            ticket = "replacement-ticket", ticketCreated = retriedAt)))
+        assertEquals(NotificationRepository.utc(retriedAt), jdbc.queryForObject(
+            "SELECT ticket_created_datetime FROM notification_push WHERE id = ?", java.time.LocalDateTime::class.java, candidate.id))
+    }
+
+    @Test
+    fun `legacy ticket receives one grace window that polling and recovery cannot extend`() {
+        val now = Instant.now().truncatedTo(ChronoUnit.SECONDS)
+        jdbc.execute(Files.readString(Path.of("deploy/rollback-notification-ticket-time.sql")))
+        val id = repository.createNotification(7, NotificationType.NOTICE, "legacy-ticket", null, null, now.minusSeconds(7 * 86400))
+        val device = repository.bindDevice(7, UUID.randomUUID().toString(), "ExpoPushToken[legacy-ticket]", "IOS", repository.languageId("ko")!!)
+        repository.enqueue(id, device, now)
+        jdbc.update("""UPDATE notification_push SET provider_ticket_id = 'legacy', status = 'RECEIPT_PENDING',
+            attempt_count = 1, created_datetime = ? WHERE notification_id = ?""", NotificationRepository.utc(now.minusSeconds(7 * 86400)), id)
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V1.11.0__add_notification_ticket_created_datetime.sql")))
+        val candidate = queue.candidates(now).single()
+        assertEquals("legacy", jdbc.queryForObject("SELECT provider_ticket_id FROM notification_push WHERE id = ?", String::class.java, candidate.id))
+        assertNull(jdbc.queryForObject("SELECT ticket_created_datetime FROM notification_push WHERE id = ?", java.time.LocalDateTime::class.java, candidate.id))
+
+        queue.claim(listOf(candidate), "first", now)
+        assertEquals(now, queue.claimed(listOf(candidate.id), "first", now).single().ticketCreated)
+        queue.claim(listOf(candidate), "loser", now.plusSeconds(5))
+        assertTrue(queue.claimed(listOf(candidate.id), "loser", now.plusSeconds(5)).isEmpty())
+        queue.finish(listOf(PushOutcome(candidate.id, "first", "RECEIPT_PENDING", now.plusSeconds(900))))
+
+        val later = now.plusSeconds(900)
+        queue.claim(queue.candidates(later), "poll", later)
+        assertEquals(now, queue.claimed(listOf(candidate.id), "poll", later).single().ticketCreated)
+        val recoveredAt = later.plusSeconds(61)
+        queue.recoverExpired(recoveredAt)
+        queue.claim(queue.candidates(recoveredAt), "recovered", recoveredAt)
+        assertEquals(now, queue.claimed(listOf(candidate.id), "recovered", recoveredAt).single().ticketCreated)
     }
 
     @Test

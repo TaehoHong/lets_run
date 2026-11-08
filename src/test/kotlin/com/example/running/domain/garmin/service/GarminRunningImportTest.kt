@@ -37,7 +37,7 @@ class GarminRunningImportTest {
     private val validation = RunningValidationService()
     private val recordService = RunningRecordService(records, shoes, configuration, validation)
     private val acceptance = RunningAcceptanceService(records, items, configuration, points, league, notifications, recordService, validation)
-    private val service = RunningImportService(records, items, configuration, acceptance, validation, recordService)
+    private val service = RunningImportService(records, items, configuration, acceptance, validation, recordService, notifications)
     private val connected = OffsetDateTime.parse("2026-10-24T00:00:00Z")
     private val userConfig = UserConfiguration(7, false)
     private val request = ImportRunningRecordRequest("123", 2000, 600,
@@ -101,6 +101,39 @@ class GarminRunningImportTest {
         assertEquals(1500, existing.leagueDistanceOverride)
         assertEquals(originalEnd, existing.leagueEndDatetimeOverride)
         verifyNoInteractions(points)
+    }
+
+    @Test
+    fun `a later corrected accepted activity advances the reminder without repeating rewards`() {
+        val originalEnd = connected.plusHours(1)
+        val existing = RunningRecord(id = 10, user = User(7), source = RunningRecordSource.GARMIN,
+            distance = 1500, durationSec = 600, pointAwarded = true,
+            startDatetime = originalEnd.minusMinutes(10), endDatetime = originalEnd).apply {
+                finishAcceptance(RunningAcceptanceStatus.ACCEPTED, true)
+            }
+        `when`(records.findByUserIdAndSourceAndExternalId(7, RunningRecordSource.GARMIN, "123")).thenReturn(existing)
+
+        val result = service.importGarmin(7, ImportRunningBatchRequest(listOf(request)), connected)
+
+        assertEquals(1, result.updatedCount)
+        assertEquals(0, result.awardedPoint)
+        assertEquals(connected.plusHours(1).plusMinutes(10), existing.endDatetime)
+        verify(notifications).recordCompletion(7, connected.plusHours(1).plusMinutes(10).toInstant())
+        verifyNoInteractions(points, league)
+    }
+
+    @ParameterizedTest
+    @CsvSource("ACCEPTED, 0", "ACCEPTED, 60", "DUPLICATE, -60", "PERSONAL_ONLY, -60")
+    fun `a replay cannot reschedule reminders without a later accepted completion`(status: RunningAcceptanceStatus, oldEndOffset: Long) {
+        val end = connected.plusHours(1).plusMinutes(10)
+        val existing = RunningRecord(id = 10, user = User(7), source = RunningRecordSource.GARMIN,
+            distance = 1500, durationSec = 600, startDatetime = connected.plusHours(1),
+            endDatetime = end.plusSeconds(oldEndOffset)).apply { finishAcceptance(status, false) }
+        `when`(records.findByUserIdAndSourceAndExternalId(7, RunningRecordSource.GARMIN, "123")).thenReturn(existing)
+
+        service.importGarmin(7, ImportRunningBatchRequest(listOf(request)), connected)
+
+        verifyNoInteractions(notifications, points, league)
     }
 
     @Test

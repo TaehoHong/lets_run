@@ -2,6 +2,8 @@ package com.example.running.domain.notification.service
 
 import com.example.running.domain.common.enums.AuthorityType
 import com.example.running.domain.notification.controller.*
+import com.example.running.domain.notification.repository.NotificationConfiguration
+import com.example.running.domain.notification.repository.NotificationConfigurationPatch
 import com.example.running.exception.ControllerAdvice
 import com.example.running.security.SecurityConfig
 import com.example.running.security.filter.AuthenticationFilter
@@ -76,6 +78,40 @@ class NotificationHttpSecurityTest {
     fun `anonymous inbox access is rejected by the real security chain`() {
         mvc.perform(get("/api/v1/notifications")).andExpect(status().isUnauthorized)
         verifyNoInteractions(service)
+    }
+
+    @Test
+    fun `an authenticated user can patch one notification preference`() {
+        val change = NotificationConfigurationPatch(leaguePushEnabled = false)
+        `when`(service.patchConfiguration(7, change)).thenReturn(NotificationConfiguration(
+            pushEnabled = true, leaguePushEnabled = false, reminderPushEnabled = false, timezone = "Asia/Seoul"))
+        mvc.perform(patch("/api/v1/notifications/configuration").header("Authorization", "Bearer user")
+            .contentType(MediaType.APPLICATION_JSON).content("""{"leaguePushEnabled":false}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.pushEnabled").value(true))
+            .andExpect(jsonPath("$.leaguePushEnabled").value(false))
+            .andExpect(jsonPath("$.reminderPushEnabled").value(false))
+            .andExpect(jsonPath("$.timezone").value("Asia/Seoul"))
+        verify(service).patchConfiguration(7, change)
+    }
+
+    @Test
+    fun `anonymous configuration patch is rejected by the real security chain`() {
+        mvc.perform(patch("/api/v1/notifications/configuration")
+            .contentType(MediaType.APPLICATION_JSON).content("""{"pushEnabled":false}"""))
+            .andExpect(status().isUnauthorized)
+        verifyNoInteractions(service)
+    }
+
+    @Test
+    fun `the existing full configuration put remains available`() {
+        val value = NotificationConfiguration(pushEnabled = true, timezone = "Asia/Seoul")
+        `when`(service.configure(7, value)).thenReturn(value)
+        mvc.perform(put("/api/v1/notifications/configuration").header("Authorization", "Bearer user")
+            .contentType(MediaType.APPLICATION_JSON).content("""{"pushEnabled":true,"timezone":"Asia/Seoul"}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.pushEnabled").value(true))
+        verify(service).configure(7, value)
     }
 
     @Test

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import com.example.running.domain.running.enums.RunningAcceptanceStatus
+import com.example.running.domain.notification.service.NotificationService
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -28,6 +29,7 @@ class RunningImportService(
     private val acceptance: RunningAcceptanceService,
     private val validation: RunningValidationService,
     private val recordService: RunningRecordService,
+    private val notifications: NotificationService,
 ) {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -131,6 +133,7 @@ class RunningImportService(
         } else null
 
         if (sameExternalRecord != null) {
+            val previousEnd = sameExternalRecord.endDatetime
             sameExternalRecord.updateImported(request, startDatetime, endDatetime)
             if (request.items.isNotEmpty()) {
                 replaceItems(sameExternalRecord.id, request)
@@ -138,6 +141,10 @@ class RunningImportService(
                 logger.info("Running import update preserved existing items: incomingItemsEmpty=true")
             }
             if (source == RunningRecordSource.GARMIN) recordService.refreshShoeTotals(listOf(sameExternalRecord))
+            if (sameExternalRecord.acceptanceStatus == RunningAcceptanceStatus.ACCEPTED &&
+                sameExternalRecord.isStatisticIncluded && previousEnd != null && endDatetime.isAfter(previousEnd)) {
+                notifications.recordCompletion(userId, endDatetime.toInstant())
+            }
             return ImportResult(
                 status = if (sameExternalRecord.acceptanceStatus == RunningAcceptanceStatus.DUPLICATE) ImportRunningRecordStatus.DUPLICATE else ImportRunningRecordStatus.UPDATED,
                 awardedPoint = 0,

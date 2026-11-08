@@ -2,6 +2,7 @@ package com.example.running.domain.notification.controller
 
 import com.example.running.domain.notification.repository.InboxNotification
 import com.example.running.domain.notification.repository.NotificationConfiguration
+import com.example.running.domain.notification.repository.NotificationConfigurationPatch
 import com.example.running.domain.notification.repository.NotificationText
 import com.example.running.domain.notification.repository.NotificationType
 import com.example.running.domain.notification.service.NotificationService
@@ -53,6 +54,9 @@ class NotificationController(private val service: NotificationService) {
 
     @PutMapping("/configuration")
     fun configure(@RequestBody value: NotificationConfiguration) = authenticateWithUser { service.configure(it, value) }
+
+    @PatchMapping("/configuration")
+    fun patchConfiguration(@RequestBody value: NotificationConfigurationPatch) = authenticateWithUser { service.patchConfiguration(it, value) }
 
     @PatchMapping("/configuration/timezone")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -140,7 +140,7 @@ class RunningAcceptanceDatabaseTest {
         val acceptance = RunningAcceptanceService(records, items, configurations, points,
             league, notifications, recordService, validation)
         // Use the production entry point's @Transactional metadata, not a test-only transaction around imports.
-        val target = RunningImportService(records, items, configurations, acceptance, validation, recordService)
+        val target = RunningImportService(records, items, configurations, acceptance, validation, recordService, notifications)
         imports = ProxyFactory(target).apply {
             isProxyTargetClass = true
             addAdvice(TransactionInterceptor(manager, AnnotationTransactionAttributeSource()))
