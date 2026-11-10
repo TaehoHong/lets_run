@@ -27,6 +27,21 @@ Nginx 버전은 숨기고 헤더·본문의 무응답 timeout은 각각 10초·3
 
 ## 검증과 복구
 
+활동 요약·상세·샘플은 `GarminWebhook` DTO로 읽고 `GarminActivityMapper`에서 변환한다.
+원본 JSON 트리는 수신 경계 검증과 정규화·event hash에만 사용한다. 마지막 샘플의 누적
+활동시간이 요약보다 짧으면 그 잔여 활동시간까지 종료 경계에 포함한다. 마지막 구간에
+활동시간만 더하면 `duration > elapsed`가 되어 상세 전체가 거절될 수 있다. 전체 거리와
+활동시간은 원본을 유지하고 `RunningValidationService`의 공통 검증을 완화하지 않는다.
+
+측정 구간 생성과 GPS 배분은 별도로 수행한다. 경로는 한 번 순회해 구간에 배분하고,
+마지막 항목은 전체 종료 시각까지의 남은 GPS를 모두 포함한다. 마지막 측정 구간 이후
+활동시간·거리가 늘지 않는 정지 샘플도 보존하며 구간의 거리·활동시간·센서 평균은 유지한다.
+
+`GarminInboxWorker`는 영구 검증 오류도 inbox를 DONE으로 완료하고 원본을 제거하므로,
+DONE만으로 상세 저장 성공을 판단하지 않는다. 같은 시각의 검증 로그와 실제 item·GPS를
+대조한다. 동일 원본의 재전송은 event hash로 중복 제거되므로 이미 DONE인 거절 건을
+복구할 때는 해당 inbox와 원본의 재처리 경로까지 확인해야 한다.
+
 ```sh
 # 설치된 Nginx를 사용하는 격리된 localhost 프록시 회귀. 실제 DB·Garmin으로 보내지 않는다.
 NGINX_BIN=/usr/sbin/nginx python3 deploy/nginx/test_garmin_webhook_proxy.py

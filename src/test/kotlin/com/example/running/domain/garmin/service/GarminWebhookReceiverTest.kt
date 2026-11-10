@@ -3,6 +3,8 @@ package com.example.running.domain.garmin.service
 import com.example.running.config.properties.GarminProperties
 import com.example.running.domain.garmin.repository.GarminRepository
 import com.example.running.exception.GarminRequestException
+import com.example.running.exception.RunningValidationException
+import com.example.running.exception.RunningValidationReason
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -119,6 +121,35 @@ class GarminWebhookReceiverTest {
         assertNotEquals(original, GarminWebhookPayload.split(mapper, original.replace("activities", "manuallyUpdatedActivities")).single())
         assertNotEquals(original, GarminWebhookPayload.split(mapper,
             """{"activities":[{"userId":"u","activityId":1,"details":{"b":2,"a":1},"samples":[3,{"b":2,"a":1}]}]}""").single())
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+        "\"distanceInMeters\":\"2000\"",
+        "\"startTimeInSeconds\":1792800000.5",
+        "\"activityId\":false",
+        "\"manual\":\"false\"",
+        "\"manual\":null",
+    ])
+    fun `typed payload rejects scalar coercion instead of importing a changed value`(field: String) {
+        val payload = """{"activities":[{"userId":"test-user",$field}]}"""
+        assertEquals(400, assertFailsWith<GarminRequestException> {
+            GarminWebhookPayload.parse(jacksonObjectMapper(), payload)
+        }.status)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = [
+        "\"latitudeInDegree\":null",
+        "\"latitudeInDegree\":37.1,\"speedMetersPerSecond\":\"3.0\"",
+    ])
+    fun `malformed GPS values retain permanent rejection after typed deserialization`(fields: String) {
+        val payload = """{"activities":[{"userId":"test-user","activityId":1,"activityType":"RUNNING",
+            "startTimeInSeconds":1792800000,"durationInSeconds":600,
+            "samples":[{"startTimeInSeconds":1792800001,"longitudeInDegree":127.1,$fields}]}]}"""
+        assertEquals(RunningValidationReason.RUNNING_INVALID_GPS, assertFailsWith<RunningValidationException> {
+            GarminWebhookPayload.parse(jacksonObjectMapper(), payload)
+        }.reason)
     }
 
     private fun enabledProperties() = GarminProperties(enabled = true, clientId = "test", clientSecret = "test",

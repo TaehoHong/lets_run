@@ -29,7 +29,6 @@ class GarminInboxWorker(
     private val transaction: TransactionTemplate,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val activityTypes = GarminWebhookPayload.activityTypes
     // Connection reads precede the user lock; later balance/league reads must see its latest commit.
     private val processingTransaction = TransactionTemplate(checkNotNull(transaction.transactionManager), transaction).apply {
         isolationLevel = TransactionDefinition.ISOLATION_READ_COMMITTED
@@ -48,19 +47,12 @@ class GarminInboxWorker(
                 require(payload.toByteArray(Charsets.UTF_8).size <= GarminInputLimits.MAX_BYTES) {
                     "Garmin payload exceeds limit"
                 }
-                val root = GarminWebhookPayload.parse(mapper, payload)
-                val entries = root.fields().asSequence().toList()
-                val mapped = entries.filter { it.key in activityTypes }.flatMap { entry ->
-                    entry.value.mapNotNull { activity ->
-                        activities.map(activity)?.let { it to (entry.key == "manuallyUpdatedActivities") }
-                    }
-                }
-                val controls = entries.filter { it.key !in activityTypes }.flatMap { it.value.toList() }
-                val externalIds = (mapped.map { it.first.garminUserId } + controls.map {
-                    val id = it.path("userId").asText()
-                    require(id.isNotBlank() && id.length <= 255) { "Invalid Garmin event" }
-                    id
-                }).distinct()
+                val webhook = GarminWebhookPayload.parse(mapper, payload)
+                val mapped = webhook.activities.mapNotNull { activities.map(it)?.let { activity -> activity to false } } +
+                    webhook.activityDetails.mapNotNull { activities.map(it)?.let { activity -> activity to false } } +
+                    webhook.manuallyUpdatedActivities.mapNotNull { activities.map(it)?.let { activity -> activity to true } }
+                val controls = webhook.deregistrations + webhook.userPermissionsChange
+                val externalIds = (mapped.map { it.first.garminUserId } + controls.map { it.userId }).distinct()
                 val connections = externalIds.mapNotNull(repository::connectionByGarminId).associateBy { it.userId }
                 connections.keys.sorted().forEach { configurations.getOrCreateForUpdate(it) }
                 val active = connections.values.mapNotNull { original ->
@@ -74,7 +66,7 @@ class GarminInboxWorker(
                 }.toMap()
                 // Notifications carry no connection generation. Confirm current permission before applying them.
                 controls.forEach { event ->
-                    active[event.path("userId").asText()]?.let { value ->
+                    active[event.userId]?.let { value ->
                         val token = cipher.decrypt(checkNotNull(value.accessToken), "connection:${value.userId}:access")
                         val granted = try {
                             "ACTIVITY_EXPORT" in api.permissions(token)

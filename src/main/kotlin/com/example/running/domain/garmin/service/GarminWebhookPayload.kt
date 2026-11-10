@@ -1,13 +1,28 @@
 package com.example.running.domain.garmin.service
 
+import com.example.running.domain.garmin.service.dto.GarminWebhook
+import com.example.running.domain.garmin.service.dto.GarminSample
+import com.example.running.exception.GarminRequestException
+import com.example.running.exception.RunningValidationException
+import com.example.running.exception.RunningValidationReason
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.JsonMappingException
+import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 
 internal object GarminWebhookPayload {
-    val activityTypes = setOf("activities", "activityDetails", "manuallyUpdatedActivities")
+    private val activityTypes = setOf("activities", "activityDetails", "manuallyUpdatedActivities")
     private val supported = activityTypes + setOf("deregistrations", "userPermissionsChange")
+    private val gpsFields = setOf(
+        GarminSample::latitudeInDegree.name,
+        GarminSample::longitudeInDegree.name,
+        GarminSample::speedMetersPerSecond.name,
+        GarminSample::elevationInMeters.name,
+    )
 
-    fun parse(mapper: ObjectMapper, payload: String): JsonNode {
+    fun parse(mapper: ObjectMapper, payload: String): GarminWebhook {
         val root = parseEnvelope(mapper, payload)
         val entries = root.fields().asSequence().toList()
         entries.forEach { entry ->
@@ -23,7 +38,18 @@ internal object GarminWebhookPayload {
                 }
             }
         }
-        return root
+        val config = mapper.deserializationConfig
+            .without(MapperFeature.ALLOW_COERCION_OF_SCALARS)
+            .without(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+            .with(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+        return try {
+            mapper.readerFor(GarminWebhook::class.java).with(config).readValue(root)
+        } catch (error: JsonProcessingException) {
+            if (error is JsonMappingException && error.path.any { it.fieldName in gpsFields }) {
+                throw RunningValidationException(RunningValidationReason.RUNNING_INVALID_GPS)
+            }
+            throw GarminRequestException(400)
+        }
     }
 
     fun split(mapper: ObjectMapper, payload: String): List<String> =
